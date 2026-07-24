@@ -91,14 +91,48 @@ FROM pawnshop p
 INNER JOIN loan l ON p.pawnshop_id = l.pawnshop_id
 GROUP BY p.name;
 
--- 7.Итоговый запрос с условием на данные (WHERE)
--- Средняя сумма ссуды по каждому ломбарду,
--- но только по возращённым ссудам.
-SELECT p.name, AVG(l.amount) AS avg_amount
+-- 12. Итоговый запрос без условия с итоговыми данными вида «всего», «в том числе»
+-- Общее число ссуд и число возвращённых по каждому ломбарду
+SELECT p.name,
+       COUNT(l.loan_id) AS total_loans,
+       COUNT(l.loan_id) FILTER (WHERE l.is_returned = true) AS returned_count,
+       COUNT(l.loan_id) FILTER (WHERE l.is_returned = false) AS not_returned_count
 FROM pawnshop p
-JOIN loan l ON p.pawnshop_id = l.pawnshop_id
-WHERE l.is_returned = true
+         JOIN loan l ON p.pawnshop_id = l.pawnshop_id
 GROUP BY p.name;
+
+-- 7.Итоговый запрос с условием на данные
+-- Число и сумма ссуд, выданных конкретным ломбардом (по значению)
+SELECT p.name, COUNT(l.loan_id) AS loan_count, SUM(l.amount) AS total_amount
+FROM pawnshop p
+         JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+WHERE l.pawnshop_id = :pawnshop_id
+GROUP BY p.name;
+
+-- Число и средняя сумма ссуд для ломбардов, чей адрес содержит заданный фрагмент (по маске)
+SELECT p.name, COUNT(l.loan_id) AS loan_count, AVG(l.amount) AS avg_amount
+FROM pawnshop p
+         JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+WHERE p.address LIKE :address_mask
+GROUP BY p.name;
+
+-- Индекс на внешний ключ, по которому идёт JOIN и группировка
+CREATE INDEX idx_loan_client_id ON loan(client_id);
+
+-- Число и сумма ссуд конкретного клиента (отбор по индексированному полю client_id)
+SELECT c.client_id, c.last_name, COUNT(l.loan_id) AS loan_count, SUM(l.amount) AS total_amount
+FROM client c
+         JOIN loan l ON c.client_id = l.client_id
+WHERE c.client_id = :client_id
+GROUP BY c.client_id, c.last_name;
+
+-- Число и сумма ссуд клиента, найденного по номеру телефона (непроиндексированное поле)
+DROP INDEX idx_loan_client_id;
+SELECT c.last_name, c.phone, COUNT(l.loan_id) AS loan_count, SUM(l.amount) AS total_amount
+FROM client c
+         JOIN loan l ON c.client_id = l.client_id
+WHERE c.phone = :phone
+GROUP BY c.last_name, c.phone;
 
 -- 8. Итоговый запрос с условием на группы (HAVING)
 -- Клиенты, оформившие более одной ссуды
@@ -140,6 +174,25 @@ SELECT AVG(amount) FROM loan
 )
 ORDER BY sub.avg_amount DESC;
 
+-- 13. Запрос с использованием объединения (UNION)
+-- Ссуды, требующие внимания сотрудника ломбарда:
+-- либо просроченные и невозвращённые, либо на крупную сумму
+SELECT l.loan_id, c.last_name, c.phone, l.amount, l.return_date,
+       'просрочена' AS reason
+FROM loan l
+         JOIN client c ON l.client_id = c.client_id
+WHERE l.is_returned = false AND l.return_date < CURRENT_DATE
+
+UNION
+
+SELECT l.loan_id, c.last_name, c.phone, l.amount, l.return_date,
+       'крупная сумма' AS reason
+FROM loan l
+         JOIN client c ON l.client_id = c.client_id
+WHERE l.amount > :large_amount_threshold
+
+ORDER BY loan_id;
+
 -- 11. Запрос с подзапросом
 -- Клиенты, бравше ссуды под залог предметов
 -- определённого типа (подзапрос в where...in)
@@ -152,4 +205,33 @@ FROM loan l
 JOIN loan_item li ON l.loan_id = li.loan_id
 WHERE li.item_type_id = :item_type_id
 );
--- на момент 24.07.2026 16 запросов
+
+-- Ломбарды, ни разу не выдававшие ссуд под залог указанного типа предмета(not in)
+SELECT p.pawnshop_id, p.name
+FROM pawnshop p
+WHERE p.pawnshop_id NOT IN (
+    SELECT l.pawnshop_id
+    FROM loan l
+             JOIN loan_item li ON l.loan_id = li.loan_id
+    WHERE li.item_type_id = :item_type_id
+);
+
+-- Классификация ссуд по статусу (CASE)
+SELECT l.loan_id, c.last_name, l.amount, l.return_date,
+       CASE
+           WHEN l.is_returned = true THEN 'возвращена'
+           WHEN l.is_returned = false AND l.return_date < CURRENT_DATE THEN 'просрочена'
+           ELSE 'в процессе'
+           END AS loan_status
+FROM loan l
+         JOIN client c ON l.client_id = c.client_id;
+
+-- Доля суммы ссуд каждого ломбарда от общей суммы по городу(операции над итоговыми данными)
+SELECT p.name,
+       SUM(l.amount) AS pawnshop_total,
+       ROUND(SUM(l.amount) / (SELECT SUM(amount) FROM loan) * 100, 2) AS percent_of_total
+FROM pawnshop p
+         JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+GROUP BY p.name;
+
+-- на момент 24.07.2026 24 запросов
