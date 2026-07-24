@@ -83,4 +83,73 @@ LEFT JOIN loan l ON c.client_id = l.client_id
 ) AS client_loans
 WHERE loan_id IS NULL;
 
--- на момент 23.07.2026 10 запросов
+-- 6. Итоговый запрос без условия
+-- Общая сумма выданных ссуд и их
+-- количество по каждому ломбарду
+SELECT p.name, COUNT(l.loan_id) AS loan_count
+FROM pawnshop p
+INNER JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+GROUP BY p.name;
+
+-- 7.Итоговый запрос с условием на данные (WHERE)
+-- Средняя сумма ссуды по каждому ломбарду,
+-- но только по возращённым ссудам.
+SELECT p.name, AVG(l.amount) AS avg_amount
+FROM pawnshop p
+JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+WHERE l.is_returned = true
+GROUP BY p.name;
+
+-- 8. Итоговый запрос с условием на группы (HAVING)
+-- Клиенты, оформившие более одной ссуды
+SELECT c.client_id, c.last_name,
+       c.first_name, COUNT(l.loan_id) AS loan_count
+FROM client c
+JOIN loan l ON c.client_id = l.client_id
+GROUP BY c.client_id, c.last_name, c.first_name
+HAVING COUNT(l.loan_id) > 1;
+
+-- 9. Итоговый запрос с условием на данные и на группы
+--(WHERE + HAVING)
+-- Ломбарды заданного района, суммарная стоимость
+-- залогов которых превышает указанный параметр
+SELECT p.name, d.district_name,
+       SUM(li.item_value) AS total_pledge_value
+FROM pawnshop p
+JOIN district d ON p.district_id = d.district_id
+JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+JOIN loan_item li ON l.loan_id = li.loan_id
+WHERE d.district_id = :district_id
+GROUP BY p.name, d.district_name
+HAVING SUM(li.item_value) > :min_total_value;
+
+-- 10. ЗАпрос на запросе по принципу итогового запроса
+-- Ломбарды, у которых средняя сумма ссуды выше средней
+-- по городу.
+-- (сначала строим итог по ломбардам, затем фильтруем
+-- внешним запросом)
+SELECT sub.name, sub.avg_amount
+FROM (
+SELECT p.name, AVG(l.amount) AS avg_amount
+FROM pawnshop p
+JOIN loan l ON p.pawnshop_id = l.pawnshop_id
+GROUP BY p.name
+) AS sub
+WHERE sub.avg_amount > (
+SELECT AVG(amount) FROM loan
+)
+ORDER BY sub.avg_amount DESC;
+
+-- 11. Запрос с подзапросом
+-- Клиенты, бравше ссуды под залог предметов
+-- определённого типа (подзапрос в where...in)
+SELECT c.client_id, c.last_name,
+       c.first_name, c.phone
+FROM client c
+WHERE c.client_id IN (
+SELECT l.client_id
+FROM loan l
+JOIN loan_item li ON l.loan_id = li.loan_id
+WHERE li.item_type_id = :item_type_id
+);
+-- на момент 24.07.2026 16 запросов
