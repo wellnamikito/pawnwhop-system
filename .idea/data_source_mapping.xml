@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/database/data/jsonb_seed.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
+    <file url="file://$PROJECT_DIR$/database/jsonb_crud.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
+    <file url="file://$PROJECT_DIR$/database/jsonb_index.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
+    <file url="file://$PROJECT_DIR$/database/jsonb_queries.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
+    <file url="file://$PROJECT_DIR$/database/jsonb_schema.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
     <file url="file://$PROJECT_DIR$/database/queries.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
     <file url="file://$PROJECT_DIR$/database/schema.sql" value="0ffce775-1792-4f2d-a44c-ba6a9003ff53" />
   </component>

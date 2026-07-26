@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS loan_document(
+    id BIGSERIAL PRIMARY KEY,
+    doc JSONB NOT NULL
+);
