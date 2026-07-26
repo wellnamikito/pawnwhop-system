@@ -1,0 +1,44 @@
+{
+  "loan_id": 1,
+  "amount": 15400.00,
+  "issue_date": "2024-03-12",
+  "return_date": "2024-04-11",
+  "penalty_percent": 2.50,
+  "is_returned": false,
+  "pawnshop":{
+    "name": "Ломбард №7",
+    "ownership_type": "частный",
+    "address": "ул. Ленина, д. 24",
+    "phone": "+79491234567",
+    "working_hours": {"opening": 9, "closed": 20},
+    "district": {"name": "Центральный"},
+    "owner": {
+      "full_name": {
+        "last_name": "Петров",
+        "first_name": "Петр",
+        "middle_name": "Петрович"
+      },
+      "owner_type": "Юридическое лицо",
+      "contacts":{"phone": "+79141234567" }
+    }
+  },
+  "client": {
+    "full_name": {
+      "last_name": "Петров",
+      "first_name": "Петр",
+      "middle_name": "Петрович"
+    },
+    "birth_date": "2001-01-01",
+    "social_status":"Студент",
+    "address":"ул. Ленина, д. 24",
+    "contacts":{"phone": "+79141234567" }
+  },
+  "items": [
+    { "type": "ювелирное изделие",
+      "description": "Золотое кольцо 585 пробы",
+      "value": 18000.00 },
+    { "type": "часы",
+      "description": "Наручные часы механические",
+      "value": 4200.00 }
+  ]
+}
