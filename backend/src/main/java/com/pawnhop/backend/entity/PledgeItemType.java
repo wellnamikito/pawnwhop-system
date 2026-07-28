@@ -1,4 +1,4 @@
-package com.pawnhop.entity;
+package com.pawnhop.backend.entity;
 
 
 import jakarta.persistence.*;

@@ -1,25 +1,24 @@
-package com.pawnhop.entity;
+package com.pawnhop.backend.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-
 @Entity
-@Table(name = "ownership_type")
+@Table(name = "district")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Builder
-public class OwnershipType {
+public class District {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ownership_type_id")
-    private Integer ownershipTypeId;
+    @Column (name = "district_id")
+    private Integer districtId;
 
     @Size(max = 100)
-    @Column(name = "type_name", length = 100)
-    private String typeName;
+    @Column(name = "district_name", length = 100)
+    private String districtName;
 }
