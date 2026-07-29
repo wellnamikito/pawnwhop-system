@@ -33,19 +33,22 @@ public class Loan {
 
     // amount_domain: NUMERIC(10,2), > 0
     @DecimalMin(value = "0.0", inclusive = false)
-    @Digits(integer = 0, fraction = 2)
+    @Digits(integer = 10, fraction = 2)
     @Column(name = "amount", precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(name = "issue_date")
     private LocalDate issueDate;
 
+    @Column(name = "return_date")
+    private LocalDate returnDate;
+
     // CHECK (penalty_percent BETWEEN 0 AND 100)
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "100.0")
     @Digits(integer = 3, fraction = 2)
     @Column(name = "penalty_percent", precision = 5, scale = 2)
-    private BigDecimal penltyPercent;
+    private BigDecimal penaltyPercent;
 
     // damand_domain -> BOOLEAN
     @Column(name = "is_returned")

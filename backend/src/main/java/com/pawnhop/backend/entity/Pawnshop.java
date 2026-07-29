@@ -32,7 +32,7 @@ public class Pawnshop {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ownerid")
+    @JoinColumn(name = "owner_id")
     private Owner ownerId;
 
     @NotNull
