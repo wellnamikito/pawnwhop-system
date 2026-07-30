@@ -3,11 +3,17 @@ package com.pawnhop.backend.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "loan_item")
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
 public class LoanItem {
 
     @EmbeddedId

@@ -48,7 +48,7 @@ public class Client {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "social_status_id")
-    private socialStatus socialStatusId;
+    private SocialStatus socialStatus;
 
     @NotNull
     @Size(max = 100)

@@ -1,8 +1,7 @@
 package com.pawnhop.backend.dto.response;
 
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,11 +15,11 @@ public class ClientResponseDto {
 
     private Integer clientId;
 
-    private String lastname;
+    private String lastName;
 
-    private String firstname;
+    private String firstName;
 
-    private String middename;
+    private String middleName;
 
     private LocalDate birthDate;
 

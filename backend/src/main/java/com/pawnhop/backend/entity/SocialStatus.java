@@ -11,7 +11,7 @@ import lombok.*;
 @Getter
 @Setter
 @Builder
-public class socialStatus {
+public class SocialStatus {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
