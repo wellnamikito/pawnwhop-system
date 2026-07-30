@@ -5,7 +5,7 @@ import com.pawnhop.backend.dto.response.DictionaryResponseDto;
 
 import java.util.List;
 
-public interface OwhershipTypeService {
+public interface OwnershipTypeService {
 
     List<DictionaryResponseDto> getAllOwhershipTypes();
 

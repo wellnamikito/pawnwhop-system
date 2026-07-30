@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface LoanItemService {
 
-    List<LoanItemResponseDto> getAllLoanItems();
+    public List<LoanItemResponseDto> getLoanItemsByLoanId(Integer loanId);
 
     LoanItemResponseDto getLoanItemById(Integer Loanid,
                                         Integer itemTypeId

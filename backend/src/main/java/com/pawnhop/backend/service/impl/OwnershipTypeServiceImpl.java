@@ -4,7 +4,7 @@ import com.pawnhop.backend.dto.request.DictionaryRequestDto;
 import com.pawnhop.backend.dto.response.DictionaryResponseDto;
 import com.pawnhop.backend.entity.OwnershipType;
 import com.pawnhop.backend.repository.OwnershipTypeRepo;
-import com.pawnhop.backend.service.OwhershipTypeService;
+import com.pawnhop.backend.service.OwnershipTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
-public class OwnershipTypeServiceImpl implements OwhershipTypeService {
+public class OwnershipTypeServiceImpl implements OwnershipTypeService {
 
     private final OwnershipTypeRepo ownershipTypeRepo;
 

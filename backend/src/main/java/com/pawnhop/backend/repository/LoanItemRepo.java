@@ -5,7 +5,9 @@ import com.pawnhop.backend.entity.LoanItemId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface LoanItemRepo extends JpaRepository<LoanItem, LoanItemId> {
-    LoanItemId id(LoanItemId id);
+    List<LoanItem> findByLoan_LoanId(Integer loanId);
 }
