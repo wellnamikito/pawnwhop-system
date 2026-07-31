@@ -3,6 +3,8 @@ package com.pawnhop.backend.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "pawnshop")
@@ -46,18 +48,21 @@ public class Pawnshop {
     private String address;
 
     @Size(max = 12)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Pattern(regexp = phone_Domain, message ="Телефон должен быть в формате +7XXXXXXXXXX" )
     @Column(name = "phone", length = 12)
     private String phone;
 
     @Min(0)
     @Max(23)
-    @Column(name = "opening_hour")
+    @JdbcTypeCode(SqlTypes.INTEGER)
+    @Column(name = "opening_hour", columnDefinition = "hour_domain")
     private Integer openingHour;
 
     @Min(0)
     @Max(23)
-    @Column(name = "closing_hour")
+    @JdbcTypeCode(SqlTypes.INTEGER)
+    @Column(name = "closing_hour", columnDefinition = "hour_domain")
     private Integer closingHour;
 
     /**

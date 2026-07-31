@@ -14,11 +14,11 @@ import java.time.LocalDate;
 @Setter
 public class ClientRequestDto {
 
-    @NotNull
+    @NotBlank(message = "Фамилия обязательна")
     @Size(max = 100)
     private String lastName;
 
-    @NotNull
+    @NotBlank(message = "Имя обязательно")
     @Size(max = 100)
     private String firstName;
 
@@ -28,6 +28,9 @@ public class ClientRequestDto {
 
     @NotNull
     private Integer socialStatusId;
+
+    @NotBlank
+    private String address;
 
     @NotBlank
     @Size(max = 12)

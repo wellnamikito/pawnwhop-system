@@ -59,6 +59,7 @@ public class ClientServiceImpl implements ClientService {
         client.setMiddleName(dto.getMiddleName());
         client.setBirthDate(dto.getBirthDay());
         client.setSocialStatus(socialStatus);
+        client.setAddress(dto.getAddress());
         client.setPhone(dto.getPhone());
 
         Client savedClient = clientRepo.save(client);
@@ -86,6 +87,7 @@ public class ClientServiceImpl implements ClientService {
         client.setMiddleName(dto.getMiddleName());
         client.setBirthDate(dto.getBirthDay());
         client.setSocialStatus(socialStatus);
+        client.setAddress(dto.getAddress());
         client.setPhone(dto.getPhone());
 
         return mapToResponse(client);

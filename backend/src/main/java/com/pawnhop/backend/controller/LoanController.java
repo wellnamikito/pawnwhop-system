@@ -33,9 +33,9 @@ public class LoanController {
         return  loanService.getLoanById(id);
     }
 
-    // POST /api/clients/{id}
-    @PutMapping("/{id")
-    public LoanResponseDto createClient(
+    // POST /api/loans/{id}
+    @PostMapping
+    public LoanResponseDto createLoan(
             @Valid @RequestBody LoanRequestDto dto
     ){
 
@@ -53,7 +53,7 @@ public class LoanController {
     }
 
     // DELETE /api/loans/{id}
-    @DeleteMapping("/{id")
+    @DeleteMapping("/{id}")
     public void deleteLoan(
             @PathVariable Integer id
     ){

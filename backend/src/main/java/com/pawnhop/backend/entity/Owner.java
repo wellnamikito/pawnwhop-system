@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "owners")
@@ -25,20 +27,20 @@ public class Owner {
     private Integer ownerId;
 
     @NotNull
-    @Size(max = 100)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Pattern(regexp = FIO_Domain, message = "ФИО может содержать только буквы, дефис и пробел")
-    @Column(name = "last_name", nullable = false, length = 100)
+    @Column(name = "last_name", columnDefinition = "fio_domain")
     private String lastName;
 
     @NotNull
-    @Size(max = 100)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Pattern(regexp = FIO_Domain, message = "ФИО может содержать только буквы, дефис и пробел")
-    @Column(name = "first_name", nullable = false, length = 100)
+    @Column(name = "first_name", columnDefinition = "fio_domain")
     private String firstName;
 
-    @Size(max = 100)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Pattern(regexp = FIO_Domain, message = "ФИО может содержать только буквы, дефис и пробел")
-    @Column(name = "middle_name", nullable = false, length = 100)
+    @Column(name = "middle_name", columnDefinition = "fio_domain")
     private String middleName;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,8 +48,9 @@ public class Owner {
     private OwnerType ownerTypeId;
 
     @Size(max = 12)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Pattern(regexp = phone_Domain, message ="Телефон должен быть в формате +7XXXXXXXXXX" )
-    @Column(name = "phone", length = 12)
+    @Column(name = "phone", columnDefinition = "phone_domain")
     private String phone;
 
 

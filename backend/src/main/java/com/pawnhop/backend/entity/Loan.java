@@ -5,6 +5,8 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,9 +34,10 @@ public class Loan {
     private Client client;
 
     // amount_domain: NUMERIC(10,2), > 0
+    @JdbcTypeCode(SqlTypes.NUMERIC)
     @DecimalMin(value = "0.0", inclusive = false)
     @Digits(integer = 10, fraction = 2)
-    @Column(name = "amount", precision = 10, scale = 2)
+    @Column(name = "amount", columnDefinition = "amount_domain")
     private BigDecimal amount;
 
     @Column(name = "issue_date")
@@ -51,6 +54,7 @@ public class Loan {
     private BigDecimal penaltyPercent;
 
     // damand_domain -> BOOLEAN
-    @Column(name = "is_returned")
+    @JdbcTypeCode(SqlTypes.BOOLEAN)
+    @Column(name = "is_returned", columnDefinition = "demand_domain")
     private Boolean isReturned;
 }

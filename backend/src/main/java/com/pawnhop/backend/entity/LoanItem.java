@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -20,7 +22,7 @@ public class LoanItem {
     private LoanItemId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("LoanId")
+    @MapsId("loanId")
     @JoinColumn(name = "loan_id")
     private Loan loan;
 
@@ -33,8 +35,9 @@ public class LoanItem {
     private String itemDescription;
 
     // amount_domain: NUMERIC(10,2), > 0
+    @JdbcTypeCode(SqlTypes.NUMERIC)
     @DecimalMin(value = "0.0", inclusive = false)
     @Digits(integer = 0, fraction = 2)
-    @Column(name = "item_value", precision = 10, scale = 2)
+    @Column(name = "item_value", columnDefinition = "amount_domain")
     private BigDecimal itemValue;
 }
