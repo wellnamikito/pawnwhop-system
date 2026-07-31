@@ -2,6 +2,7 @@ package com.pawnhop.backend.auth;
 
 import com.pawnhop.backend.auth.dto.AuthResponse;
 import com.pawnhop.backend.auth.dto.LoginRequest;
+import com.pawnhop.backend.auth.service.JwtService;
 import com.pawnhop.backend.auth.service.PostgreSQLAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private final JwtService jwtService;
+
     private final PostgreSQLAuthService authService;
 
     @PostMapping("/login")
@@ -25,9 +28,15 @@ public class AuthController {
                 request.getPassword()
         );
 
-        return new AuthResponse(
+        String token = jwtService.generateToken(
                 request.getUsername(),
                 role
+        );
+
+        return new AuthResponse(
+                request.getUsername(),
+                role,
+                token
         );
     }
 }

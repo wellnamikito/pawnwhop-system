@@ -1,5 +1,6 @@
 package com.pawnhop.backend.auth.service;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
 import java.sql.*;
@@ -61,9 +62,12 @@ public class PostgreSQLAuthService {
 
         } catch (SQLException e){
 
-            throw new RuntimeException(
-                    "Invalid credentials"
+            throw new BadCredentialsException(
+
+                    "Invalid username or password"
+
             );
         }
     }
+
 }
