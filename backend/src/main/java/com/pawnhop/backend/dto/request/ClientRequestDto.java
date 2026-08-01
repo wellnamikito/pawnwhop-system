@@ -24,7 +24,7 @@ public class ClientRequestDto {
 
     private String middleName;
 
-    private LocalDate birthDay;
+    private LocalDate birthDate;
 
     @NotNull
     private Integer socialStatusId;

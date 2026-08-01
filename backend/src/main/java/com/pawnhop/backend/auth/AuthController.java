@@ -2,13 +2,12 @@ package com.pawnhop.backend.auth;
 
 import com.pawnhop.backend.auth.dto.AuthResponse;
 import com.pawnhop.backend.auth.dto.LoginRequest;
+import com.pawnhop.backend.auth.dto.UserInfoResponse;
 import com.pawnhop.backend.auth.service.JwtService;
 import com.pawnhop.backend.auth.service.PostgreSQLAuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,5 +37,20 @@ public class AuthController {
                 role,
                 token
         );
+    }
+
+    @GetMapping("/me")
+    public UserInfoResponse me(
+            Authentication authentication
+    ){
+        String username = authentication.getName();
+
+        String role = authentication
+                .getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        return new UserInfoResponse(username, role);
     }
 }

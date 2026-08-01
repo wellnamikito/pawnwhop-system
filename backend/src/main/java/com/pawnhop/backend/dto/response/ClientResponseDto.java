@@ -25,5 +25,7 @@ public class ClientResponseDto {
 
     private String socialStatus;
 
+    private String address;
+
     private String phone;
 }

@@ -57,7 +57,7 @@ public class ClientServiceImpl implements ClientService {
         client.setLastName(dto.getLastName());
         client.setFirstName(dto.getFirstName());
         client.setMiddleName(dto.getMiddleName());
-        client.setBirthDate(dto.getBirthDay());
+        client.setBirthDate(dto.getBirthDate());
         client.setSocialStatus(socialStatus);
         client.setAddress(dto.getAddress());
         client.setPhone(dto.getPhone());
@@ -85,7 +85,7 @@ public class ClientServiceImpl implements ClientService {
         client.setFirstName(dto.getFirstName());
         client.setLastName(dto.getLastName());
         client.setMiddleName(dto.getMiddleName());
-        client.setBirthDate(dto.getBirthDay());
+        client.setBirthDate(dto.getBirthDate());
         client.setSocialStatus(socialStatus);
         client.setAddress(dto.getAddress());
         client.setPhone(dto.getPhone());
@@ -107,9 +107,9 @@ public class ClientServiceImpl implements ClientService {
         return new ClientResponseDto(
             client.getClientId(),
 
-            client.getFirstName(),
-
             client.getLastName(),
+
+            client.getFirstName(),
 
             client.getMiddleName(),
 
@@ -117,7 +117,9 @@ public class ClientServiceImpl implements ClientService {
 
             client.getSocialStatus().getStatusName(),
 
-                client.getSocialStatus().getStatusName()
+                client.getAddress(),
+
+                client.getPhone()
         );
     }
 }
