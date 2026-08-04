@@ -121,4 +121,3 @@ GRANT SELECT
 
 SELECT session_user, current_user;
 
-\du pawnshop_operator
