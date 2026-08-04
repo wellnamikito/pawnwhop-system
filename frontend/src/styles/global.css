@@ -1,0 +1,593 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/*
+  Design language: "ledger register" - the visual world of a municipal
+  pawnshop registry: brass pawn-ticket tags, ink stamps, ruled ledger pages.
+  Ink charcoal + brass accent, serif for record headers, monospace for
+  IDs/amounts/dates (the numbers a clerk actually has to read precisely).
+*/
+
+:root {
+  --ink-900: #1c2023;
+  --ink-800: #262b2f;
+  --ink-700: #383f44;
+  --ink-500: #6b737a;
+  --ink-300: #a7aeb3;
+  --paper-0: #f6f4ef;
+  --paper-100: #efece3;
+  --paper-200: #e4e0d3;
+  --line: #d8d2c1;
+
+  --brass-600: #9c7027;
+  --brass-500: #b8863b;
+  --brass-100: #f1e3c3;
+
+  --ok-600: #3f6b4a;
+  --ok-100: #dfe9df;
+  --warn-600: #8a4b1f;
+  --warn-100: #f2e0c9;
+  --danger-600: #832f2f;
+  --danger-100: #f3dcdb;
+
+  --font-display: "Source Serif 4", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --shadow-card: 0 1px 2px rgba(28, 32, 35, 0.06), 0 1px 0 rgba(28, 32, 35, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper-0);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink-900);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass-500);
+  outline-offset: 2px;
+}
+
+/* ---------- App shell ---------- */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--ink-900);
+  color: var(--paper-100);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px 20px;
+  border-bottom: 1px solid rgba(246, 244, 239, 0.12);
+  margin-bottom: 14px;
+}
+
+.sidebar-brand .mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--brass-500);
+  display: inline-block;
+  transform: rotate(45deg);
+}
+
+.sidebar-brand .title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.sidebar-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-300);
+  padding: 14px 10px 6px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--paper-100);
+  text-decoration: none;
+  font-size: 13.5px;
+  opacity: 0.82;
+}
+
+.nav-link:hover {
+  background: rgba(246, 244, 239, 0.06);
+  opacity: 1;
+}
+
+.nav-link.active {
+  background: rgba(184, 134, 59, 0.18);
+  color: #f1e3c3;
+  opacity: 1;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 10px;
+  border-top: 1px solid rgba(246, 244, 239, 0.12);
+  font-size: 12px;
+  color: var(--ink-300);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-0);
+}
+
+.topbar h1 {
+  font-size: 20px;
+}
+
+.topbar .subtitle {
+  color: var(--ink-500);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.role-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-100);
+  color: var(--ink-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.content {
+  padding: 24px 28px 48px;
+  flex: 1;
+}
+
+/* ---------- Cards / toolbars ---------- */
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  background: var(--paper-0);
+  min-width: 220px;
+}
+
+.search-input input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  width: 100%;
+  color: var(--ink-900);
+}
+
+select,
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="password"],
+textarea {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  background: #fff;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+}
+
+label {
+  font-size: 12px;
+  color: var(--ink-700);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 16px;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-900);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn:hover {
+  background: var(--paper-100);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+  color: var(--paper-0);
+}
+
+.btn-primary:hover {
+  background: var(--ink-800);
+}
+
+.btn-brass {
+  background: var(--brass-500);
+  border-color: var(--brass-600);
+  color: #241a08;
+}
+
+.btn-brass:hover {
+  background: var(--brass-600);
+}
+
+.btn-danger {
+  color: var(--danger-600);
+  border-color: var(--danger-100);
+  background: #fff;
+}
+
+.btn-danger:hover {
+  background: var(--danger-100);
+}
+
+.btn-sm {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+/* ---------- Table ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-500);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-100);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+thead th:hover {
+  color: var(--ink-900);
+}
+
+tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--paper-200);
+  color: var(--ink-800);
+  vertical-align: middle;
+}
+
+tbody tr:hover {
+  background: var(--paper-0);
+}
+
+tbody tr.expanded {
+  background: var(--paper-0);
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--ink-500);
+}
+
+.empty-state .stamp {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink-700);
+  margin-bottom: 6px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--ink-500);
+}
+
+/* ---------- Badges (status stamps) ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.badge-ok {
+  background: var(--ok-100);
+  color: var(--ok-600);
+}
+
+.badge-warn {
+  background: var(--warn-100);
+  color: var(--warn-600);
+}
+
+.badge-danger {
+  background: var(--danger-100);
+  color: var(--danger-600);
+}
+
+/* ---------- Modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 32, 35, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 20px;
+  z-index: 50;
+  overflow-y: auto;
+}
+
+.modal {
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 620px;
+  box-shadow: 0 12px 40px rgba(28, 32, 35, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-body {
+  padding: 20px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-500);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.icon-btn:hover {
+  color: var(--ink-900);
+}
+
+/* ---------- Login ---------- */
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink-900);
+  background-image: radial-gradient(circle at 20% 20%, rgba(184, 134, 59, 0.12), transparent 45%);
+}
+
+.login-card {
+  width: 360px;
+  background: var(--paper-0);
+  border-radius: var(--radius-md);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+  padding: 32px 28px;
+}
+
+.login-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.login-mark .mark {
+  width: 14px;
+  height: 14px;
+  background: var(--brass-500);
+  transform: rotate(45deg);
+  border-radius: 3px;
+}
+
+.login-mark span {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.error-text {
+  color: var(--danger-600);
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+
+.helper-text {
+  color: var(--ink-500);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  padding: 16px 18px;
+}
+
+.stat-card .label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-500);
+}
+
+.stat-card .value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  margin-top: 6px;
+  color: var(--ink-900);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  margin: 28px 0 10px;
+  color: var(--ink-900);
+}
+
+.chart-card {
+  padding: 18px 20px 6px;
+}
