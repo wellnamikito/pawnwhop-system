@@ -14,18 +14,30 @@ import {
 import * as XLSX from "xlsx";
 import { reportApi } from "@/api/endpoints";
 
-type QueryKey = "loansByDistrict" | "topItemTypes" | "overdueLoans";
+/**
+ * The real backend (ReportController, /api/report/**) exposes ~20 report
+ * endpoints - only ADMIN and ANALYST can reach it per SecurityConfig. This
+ * page wires up 3 of them that map cleanly onto the spec's requirement for
+ * "просмотр результатов запросов" + "визуализация" (bar/pie chart + Excel
+ * export). The other ~17 endpoints (loans by period, pawnshops above
+ * average, clients with multiple loans, etc.) follow the exact same
+ * pattern in src/api/endpoints.ts - add them here the same way if needed.
+ */
+
+type QueryKey = "loansCountByClient" | "pawnshopLoanShare" | "overdueLoans";
 
 const QUERIES: { key: QueryKey; label: string; chart: "bar" | "pie" | "table" }[] = [
-  { key: "loansByDistrict", label: "Сумма выданных ссуд по районам", chart: "bar" },
-  { key: "topItemTypes", label: "Популярность видов залоговых предметов", chart: "pie" },
-  { key: "overdueLoans", label: "Просроченные ссуды (реестр)", chart: "table" },
+  { key: "loansCountByClient", label: "Число ссуд по клиентам", chart: "bar" },
+  { key: "pawnshopLoanShare", label: "Доля ломбарда в общей сумме ссуд", chart: "pie" },
+  { key: "overdueLoans", label: "Просроченные ссуды на сегодня", chart: "table" },
 ];
 
 const PIE_COLORS = ["#b8863b", "#3f6b4a", "#6b737a", "#832f2f", "#8a4b1f", "#383f44"];
 
+const today = new Date().toISOString().slice(0, 10);
+
 export default function ReportsPage() {
-  const [active, setActive] = useState<QueryKey>("loansByDistrict");
+  const [active, setActive] = useState<QueryKey>("loansCountByClient");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +46,11 @@ export default function ReportsPage() {
     setLoading(true);
     setError(null);
     const call =
-      active === "loansByDistrict"
-        ? reportApi.loansByDistrict()
-        : active === "topItemTypes"
-        ? reportApi.topItemTypes()
-        : reportApi.overdueLoans();
+      active === "loansCountByClient"
+        ? reportApi.loansCountByClient()
+        : active === "pawnshopLoanShare"
+        ? reportApi.pawnshopLoanShare()
+        : reportApi.overdueLoans(today);
 
     call
       .then((data) => setRows(data as any[]))
@@ -50,6 +62,10 @@ export default function ReportsPage() {
 
   const config = QUERIES.find((q) => q.key === active)!;
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+  // chart x/y keys per query - see field names documented in api/endpoints.ts
+  const chartXKey = active === "loansCountByClient" ? "name" : "name";
+  const chartYKey = active === "loansCountByClient" ? "loanCount" : "percentOfTotal";
 
   function exportToExcel() {
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -87,26 +103,26 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {config.chart !== "table" && (
+      {config.chart !== "table" && rows.length > 0 && (
         <div className="card chart-card" style={{ marginBottom: 16, height: 320 }}>
           <ResponsiveContainer width="100%" height="100%">
             {config.chart === "bar" ? (
               <BarChart data={rows} margin={{ top: 16, right: 20, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
-                <XAxis dataKey={columns[0]} tick={{ fontSize: 12 }} />
+                <XAxis dataKey={chartXKey} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey={columns[1]} fill="var(--brass-500)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey={chartYKey} fill="var(--brass-500)" radius={[3, 3, 0, 0]} />
               </BarChart>
             ) : (
               <PieChart>
                 <Tooltip />
                 <Pie
                   data={rows}
-                  dataKey={columns[1]}
-                  nameKey={columns[0]}
+                  dataKey={chartYKey}
+                  nameKey={chartXKey}
                   outerRadius={110}
-                  label={(d: any) => d[columns[0]]}
+                  label={(d: any) => d[chartXKey]}
                 >
                   {rows.map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />

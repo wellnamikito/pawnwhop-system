@@ -371,6 +371,9 @@ function LoanItemsPanel({
   function validate(draft: Partial<LoanItem>) {
     const errs: Record<string, string> = {};
     if (!draft.item_type_id) errs.item_type_id = "Выберите вид предмета";
+    if (!draft.item_description || !draft.item_description.trim()) {
+      errs.item_description = "Обязательное поле";
+    }
     const valErr = validatePositiveAmount(draft.item_value);
     if (valErr) errs.item_value = valErr;
     return errs;
@@ -498,12 +501,13 @@ function LoanItemsPanel({
               {errors.item_value && <div className="error-text">{errors.item_value}</div>}
             </div>
             <div className="field" style={{ gridColumn: "1 / -1" }}>
-              <label>Описание</label>
+              <label>Описание *</label>
               <textarea
                 rows={2}
                 value={editing.item_description ?? ""}
                 onChange={(e) => setEditing({ ...editing, item_description: e.target.value })}
               />
+              {errors.item_description && <div className="error-text">{errors.item_description}</div>}
             </div>
           </div>
         </Modal>

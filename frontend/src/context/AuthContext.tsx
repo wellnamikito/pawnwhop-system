@@ -6,15 +6,21 @@ import { authApi } from "@/api/endpoints";
  * Implements requirement #1/#2 from the spec: "one program for all roles -
  * situational access to the interface" and "several user roles".
  *
- *   ADMIN    - manages users & their roles/permissions (owner_type,
- *              district etc. dictionaries), full CRUD everywhere.
- *   OPERATOR - "пользователи_1": day-to-day data entry - clients, loans,
- *              pledged items; full CRUD on operational tables, no user mgmt.
- *   ANALYST  - "пользователи_2": read-only browsing, search/filter,
- *              query results and visualization/export only.
+ * This matrix mirrors backend/.../auth/config/SecurityConfig.java exactly -
+ * keep the two in sync if you change one:
  *
- * Every page reads `can(...)` from this context to decide what to show,
- * instead of maintaining separate apps/builds per role.
+ *   ADMIN    - full access everywhere, incl. dictionary edits and DELETE
+ *              on core tables (SecurityConfig: hasRole("ADMIN") on DELETE)
+ *   OPERATOR - "пользователи_1": can view/create/edit pawnshops, owners,
+ *              clients, loans - but NOT delete them (DELETE is ADMIN-only
+ *              in SecurityConfig) and NOT touch dictionaries or reports
+ *              (SecurityConfig only grants /api/report/** to ADMIN/ANALYST)
+ *   ANALYST  - "пользователи_2": read-only everywhere, plus reports
+ *
+ * There is no "users" resource: the backend has no /api/users endpoint.
+ * Login/roles are backed directly by real PostgreSQL roles
+ * (admin_role/operator_role/analyst_role via PostgreSQLAuthService) - user
+ * management happens at the database level, not through this UI.
  */
 
 type Action = "view" | "create" | "edit" | "delete";
@@ -24,7 +30,6 @@ type Resource =
   | "owners"
   | "clients"
   | "loans"
-  | "users"
   | "reports";
 
 const PERMISSIONS: Record<Role, Record<Resource, Action[]>> = {
@@ -34,17 +39,15 @@ const PERMISSIONS: Record<Role, Record<Resource, Action[]>> = {
     owners: ["view", "create", "edit", "delete"],
     clients: ["view", "create", "edit", "delete"],
     loans: ["view", "create", "edit", "delete"],
-    users: ["view", "create", "edit", "delete"],
     reports: ["view"],
   },
   OPERATOR: {
     dictionaries: ["view"],
-    pawnshops: ["view", "create", "edit", "delete"],
-    owners: ["view", "create", "edit", "delete"],
-    clients: ["view", "create", "edit", "delete"],
-    loans: ["view", "create", "edit", "delete"],
-    users: [],
-    reports: ["view"],
+    pawnshops: ["view", "create", "edit"],
+    owners: ["view", "create", "edit"],
+    clients: ["view", "create", "edit"],
+    loans: ["view", "create", "edit"],
+    reports: [],
   },
   ANALYST: {
     dictionaries: ["view"],
@@ -52,7 +55,6 @@ const PERMISSIONS: Record<Role, Record<Resource, Action[]>> = {
     owners: ["view"],
     clients: ["view"],
     loans: ["view"],
-    users: [],
     reports: ["view"],
   },
 };

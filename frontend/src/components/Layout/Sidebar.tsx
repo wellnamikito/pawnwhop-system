@@ -56,15 +56,6 @@ export function Sidebar() {
         </NavLink>
       )}
 
-      {can("users", "view") && (
-        <>
-          <div className="sidebar-section-label">Администрирование</div>
-          <NavLink to="/users" className={linkClass}>
-            Пользователи и роли
-          </NavLink>
-        </>
-      )}
-
       <div className="sidebar-footer">
         {user?.full_name}
         <br />

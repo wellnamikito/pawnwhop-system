@@ -12,7 +12,6 @@ import PawnshopsPage from "@/pages/PawnshopsPage";
 import OwnersPage from "@/pages/OwnersPage";
 import DictionariesPage from "@/pages/DictionariesPage";
 import ReportsPage from "@/pages/ReportsPage";
-import UsersPage from "@/pages/UsersPage";
 
 export default function App() {
   return (
@@ -74,14 +73,6 @@ export default function App() {
               element={
                 <RequirePermission resource="reports">
                   <ReportsPage />
-                </RequirePermission>
-              }
-            />
-            <Route
-              path="users"
-              element={
-                <RequirePermission resource="users">
-                  <UsersPage />
                 </RequirePermission>
               }
             />

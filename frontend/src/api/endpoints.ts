@@ -1,116 +1,302 @@
 import api from "./client";
+import {
+  MOCK_ENABLED,
+  mockAuthApi,
+  mockClientApi,
+  mockDistrictApi,
+  mockLoanApi,
+  mockLoanItemApi,
+  mockOwnerApi,
+  mockOwnerTypeApi,
+  mockOwnershipTypeApi,
+  mockPawnshopApi,
+  mockPledgeItemTypeApi,
+  mockReportApi,
+  mockSocialStatusApi,
+} from "./mockData";
+import {
+  type ClientDto,
+  type DictionaryDto,
+  type LoanDto,
+  type LoanItemDto,
+  type OwnerDto,
+  type PawnshopDto,
+  normalizeRole,
+  toClient,
+  toClientRequest,
+  toDistrict,
+  toLoan,
+  toLoanItem,
+  toLoanItemRequest,
+  toLoanRequest,
+  toOwner,
+  toOwnerRequest,
+  toOwnerType,
+  toOwnershipType,
+  toPawnshop,
+  toPawnshopRequest,
+  toPledgeItemType,
+  toSocialStatus,
+} from "./adapters";
 import type {
   AppUser,
   Client,
   District,
   Loan,
   LoanItem,
-  LoanWithItems,
   Owner,
   OwnerType,
   OwnershipType,
   Pawnshop,
   PledgeItemType,
-  Role,
   SocialStatus,
 } from "@/types";
-import * as mockAuth from "@/mocks/auth.mock";
 
-/**
- * Thin wrapper describing the REST contract this frontend expects from the
- * Spring Boot backend. Adjust paths here if your @RequestMapping's differ -
- * this is the only file (besides client.ts) that needs to change.
- */
+// ============================================================================
+// Dictionaries (справочники) - backend returns/accepts a generic {id, name}
+// shape for all 5 tables (see DictionaryResponseDto / DictionaryRequestDto).
+// ============================================================================
 
-// ---------- Generic CRUD factory ----------
-// Expected Spring Boot side: a @RestController exposing
-//   GET    /api/{resource}?search=&page=&size=&sort=
-//   GET    /api/{resource}/{id}
-//   POST   /api/{resource}
-//   PUT    /api/{resource}/{id}
-//   DELETE /api/{resource}/{id}
-function crud<T, ID = number>(resource: string) {
+function dictionaryApiFor<T extends Record<string, any>>(
+  path: string,
+  toModel: (d: DictionaryDto) => T,
+  nameField: keyof T
+) {
   return {
-    list: (params?: Record<string, unknown>) =>
-      api.get<T[]>(`/${resource}`, { params }).then((r) => r.data),
-    get: (id: ID) => api.get<T>(`/${resource}/${id}`).then((r) => r.data),
+    list: () => api.get<DictionaryDto[]>(`/${path}`).then((r) => r.data.map(toModel)),
     create: (payload: Partial<T>) =>
-      api.post<T>(`/${resource}`, payload).then((r) => r.data),
-    update: (id: ID, payload: Partial<T>) =>
-      api.put<T>(`/${resource}/${id}`, payload).then((r) => r.data),
-    remove: (id: ID) => api.delete<void>(`/${resource}/${id}`).then((r) => r.data),
+      api.post<DictionaryDto>(`/${path}`, { name: payload[nameField] }).then((r) => toModel(r.data)),
+    update: (id: number, payload: Partial<T>) =>
+      api.put<DictionaryDto>(`/${path}/${id}`, { name: payload[nameField] }).then((r) => toModel(r.data)),
+    remove: (id: number) => api.delete<void>(`/${path}/${id}`).then((r) => r.data),
   };
 }
 
-// ---------- Dictionaries (справочники) ----------
-export const districtApi = crud<District>("districts");
-export const ownershipTypeApi = crud<OwnershipType>("ownership-types");
-export const ownerTypeApi = crud<OwnerType>("owner-types");
-export const socialStatusApi = crud<SocialStatus>("social-statuses");
-export const pledgeItemTypeApi = crud<PledgeItemType>("pledge-item-types");
+export const districtApi = MOCK_ENABLED
+  ? mockDistrictApi
+  : dictionaryApiFor<District>("districts", toDistrict, "district_name");
+export const ownershipTypeApi = MOCK_ENABLED
+  ? mockOwnershipTypeApi
+  : dictionaryApiFor<OwnershipType>("ownership-types", toOwnershipType, "type_name");
+export const ownerTypeApi = MOCK_ENABLED
+  ? mockOwnerTypeApi
+  : dictionaryApiFor<OwnerType>("owner-types", toOwnerType, "type_name");
+export const socialStatusApi = MOCK_ENABLED
+  ? mockSocialStatusApi
+  : dictionaryApiFor<SocialStatus>("social-statuses", toSocialStatus, "status_name");
+export const pledgeItemTypeApi = MOCK_ENABLED
+  ? mockPledgeItemTypeApi
+  : dictionaryApiFor<PledgeItemType>("pledge-item-types", toPledgeItemType, "type_name");
 
-// ---------- Core entities ----------
-export const ownerApi = crud<Owner>("owners");
-export const pawnshopApi = crud<Pawnshop>("pawnshops");
-export const clientApi = crud<Client>("clients");
-export const loanApi = crud<Loan>("loans");
+// ============================================================================
+// Owners
+// ============================================================================
 
-// Loans are a parent (1) - loan_item is the child (many), matching the
-// "один-ко-многим" master-detail requirement. loan_item has a composite key
-// (loan_id, item_type_id), so it's handled as a nested sub-resource rather
-// than through the generic crud<> factory.
-export const loanItemApi = {
-  listForLoan: (loanId: number) =>
-    api.get<LoanItem[]>(`/loans/${loanId}/items`).then((r) => r.data),
-  getWithItems: (loanId: number) =>
-    api.get<LoanWithItems>(`/loans/${loanId}?expand=items`).then((r) => r.data),
-  add: (loanId: number, payload: Partial<LoanItem>) =>
-    api.post<LoanItem>(`/loans/${loanId}/items`, payload).then((r) => r.data),
-  update: (loanId: number, itemTypeId: number, payload: Partial<LoanItem>) =>
-    api
-      .put<LoanItem>(`/loans/${loanId}/items/${itemTypeId}`, payload)
-      .then((r) => r.data),
-  remove: (loanId: number, itemTypeId: number) =>
-    api.delete<void>(`/loans/${loanId}/items/${itemTypeId}`).then((r) => r.data),
-};
-
-// ---------- Auth / users (администратор управляет пользователями и ролями) ----------
-const useMock = true;
-
-export const authApi = useMock
-    ? mockAuth
-    : {
-      login: (username: string, password: string) =>
-          api
-              .post<{ token: string; user: AppUser }>("/auth/login", {
-                username,
-                password,
-              })
-              .then((r) => r.data),
-
-      me: () => api.get<AppUser>("/auth/me").then((r) => r.data),
+export const ownerApi = MOCK_ENABLED
+  ? mockOwnerApi
+  : {
+      list: async (): Promise<Owner[]> => {
+        const [owners, ownerTypes] = await Promise.all([
+          api.get<OwnerDto[]>("/owners").then((r) => r.data),
+          ownerTypeApi.list(),
+        ]);
+        return owners.map((o) => toOwner(o, ownerTypes));
+      },
+      create: async (payload: Partial<Owner>): Promise<Owner> => {
+        const ownerTypes = await ownerTypeApi.list();
+        return api
+          .post<OwnerDto>("/owners", toOwnerRequest(payload))
+          .then((r) => toOwner(r.data, ownerTypes));
+      },
+      update: async (id: number, payload: Partial<Owner>): Promise<Owner> => {
+        const ownerTypes = await ownerTypeApi.list();
+        return api
+          .put<OwnerDto>(`/owners/${id}`, toOwnerRequest(payload))
+          .then((r) => toOwner(r.data, ownerTypes));
+      },
+      remove: (id: number) => api.delete<void>(`/owners/${id}`).then((r) => r.data),
     };
 
-export const userApi = {
-  ...crud<AppUser>("users"),
-  setRole: (id: number, role: Role) =>
-    api.patch<AppUser>(`/users/${id}/role`, { role }).then((r) => r.data),
-};
+// ============================================================================
+// Pawnshops
+// ============================================================================
 
-// ---------- Reporting / query results / visualization ----------
-// "просмотр результатов выполнения запросов" + "визуализация одного из
-// итоговых запросов" from the spec. Backend exposes pre-built report
-// endpoints (Spring Boot service methods run the SQL/JPQL queries); the
-// frontend just requests and renders the results.
-export const reportApi = {
-  // e.g. amount lent per district, overdue loans, most pledged item types...
-  loansByDistrict: () =>
-    api.get<{ district_name: string; total_amount: number }[]>(
-      "/reports/loans-by-district"
-    ).then((r) => r.data),
-  overdueLoans: () => api.get<Loan[]>("/reports/overdue-loans").then((r) => r.data),
-  topItemTypes: () =>
-    api
-      .get<{ type_name: string; loan_count: number }[]>("/reports/top-item-types")
-      .then((r) => r.data),
-};
+export const pawnshopApi = MOCK_ENABLED
+  ? mockPawnshopApi
+  : {
+      list: async (): Promise<Pawnshop[]> => {
+        const [pawnshops, ownershipTypes, districts, owners] = await Promise.all([
+          api.get<PawnshopDto[]>("/pawnshops").then((r) => r.data),
+          ownershipTypeApi.list(),
+          districtApi.list(),
+          ownerApi.list(),
+        ]);
+        return pawnshops.map((p) => toPawnshop(p, { ownershipTypes, districts, owners }));
+      },
+      create: async (payload: Partial<Pawnshop>): Promise<Pawnshop> => {
+        const [ownershipTypes, districts, owners] = await Promise.all([
+          ownershipTypeApi.list(),
+          districtApi.list(),
+          ownerApi.list(),
+        ]);
+        return api
+          .post<PawnshopDto>("/pawnshops", toPawnshopRequest(payload))
+          .then((r) => toPawnshop(r.data, { ownershipTypes, districts, owners }));
+      },
+      update: async (id: number, payload: Partial<Pawnshop>): Promise<Pawnshop> => {
+        const [ownershipTypes, districts, owners] = await Promise.all([
+          ownershipTypeApi.list(),
+          districtApi.list(),
+          ownerApi.list(),
+        ]);
+        return api
+          .put<PawnshopDto>(`/pawnshops/${id}`, toPawnshopRequest(payload))
+          .then((r) => toPawnshop(r.data, { ownershipTypes, districts, owners }));
+      },
+      remove: (id: number) => api.delete<void>(`/pawnshops/${id}`).then((r) => r.data),
+    };
+
+// ============================================================================
+// Clients
+// ============================================================================
+
+export const clientApi = MOCK_ENABLED
+  ? mockClientApi
+  : {
+      list: async (): Promise<Client[]> => {
+        const [clients, socialStatuses] = await Promise.all([
+          api.get<ClientDto[]>("/clients").then((r) => r.data),
+          socialStatusApi.list(),
+        ]);
+        return clients.map((c) => toClient(c, socialStatuses));
+      },
+      create: async (payload: Partial<Client>): Promise<Client> => {
+        const socialStatuses = await socialStatusApi.list();
+        return api
+          .post<ClientDto>("/clients", toClientRequest(payload))
+          .then((r) => toClient(r.data, socialStatuses));
+      },
+      update: async (id: number, payload: Partial<Client>): Promise<Client> => {
+        const socialStatuses = await socialStatusApi.list();
+        return api
+          .put<ClientDto>(`/clients/${id}`, toClientRequest(payload))
+          .then((r) => toClient(r.data, socialStatuses));
+      },
+      remove: (id: number) => api.delete<void>(`/clients/${id}`).then((r) => r.data),
+    };
+
+// ============================================================================
+// Loans (parent) + LoanItems (child, composite key loan_id+item_type_id)
+// ============================================================================
+
+export const loanApi = MOCK_ENABLED
+  ? mockLoanApi
+  : {
+      list: async (): Promise<Loan[]> => {
+        const [loans, pawnshops, clients] = await Promise.all([
+          api.get<LoanDto[]>("/loans").then((r) => r.data),
+          pawnshopApi.list(),
+          clientApi.list(),
+        ]);
+        return loans.map((l) => toLoan(l, { pawnshops, clients }));
+      },
+      create: async (payload: Partial<Loan>): Promise<Loan> => {
+        const [pawnshops, clients] = await Promise.all([pawnshopApi.list(), clientApi.list()]);
+        return api
+          .post<LoanDto>("/loans", toLoanRequest(payload))
+          .then((r) => toLoan(r.data, { pawnshops, clients }));
+      },
+      update: async (id: number, payload: Partial<Loan>): Promise<Loan> => {
+        const [pawnshops, clients] = await Promise.all([pawnshopApi.list(), clientApi.list()]);
+        return api
+          .put<LoanDto>(`/loans/${id}`, toLoanRequest(payload))
+          .then((r) => toLoan(r.data, { pawnshops, clients }));
+      },
+      remove: (id: number) => api.delete<void>(`/loans/${id}`).then((r) => r.data),
+    };
+
+export const loanItemApi = MOCK_ENABLED
+  ? mockLoanItemApi
+  : {
+      listForLoan: (loanId: number) =>
+        api.get<LoanItemDto[]>(`/loans/${loanId}/items`).then((r) => r.data.map(toLoanItem)),
+      add: (loanId: number, payload: Partial<LoanItem>) =>
+        api
+          .post<LoanItemDto>(`/loans/${loanId}/items`, toLoanItemRequest(loanId, payload))
+          .then((r) => toLoanItem(r.data)),
+      update: (loanId: number, itemTypeId: number, payload: Partial<LoanItem>) =>
+        api
+          .put<LoanItemDto>(`/loans/${loanId}/items/${itemTypeId}`, toLoanItemRequest(loanId, payload))
+          .then((r) => toLoanItem(r.data)),
+      remove: (loanId: number, itemTypeId: number) =>
+        api.delete<void>(`/loans/${loanId}/items/${itemTypeId}`).then((r) => r.data),
+    };
+
+// ============================================================================
+// Auth
+// ============================================================================
+// Backend authenticates directly against PostgreSQL roles - there is no
+// /api/users endpoint. Roles ("admin_role"/"operator_role"/"analyst_role")
+// are managed by whoever administers the PostgreSQL database (e.g. via
+// GRANT/CREATE ROLE, or the SQL scripts under database/), not through this
+// UI. See AuthContext.tsx and the chat notes for details.
+
+export const authApi = MOCK_ENABLED
+  ? mockAuthApi
+  : {
+      login: (username: string, password: string) =>
+        api
+          .post<{ username: string; role: string; token: string }>("/auth/login", { username, password })
+          .then((r) => ({
+            token: r.data.token,
+            user: {
+              username: r.data.username,
+              full_name: r.data.username,
+              role: normalizeRole(r.data.role),
+            } as AppUser,
+          })),
+      me: () =>
+        api.get<{ username: string; role: string }>("/auth/me").then(
+          (r) =>
+            ({
+              username: r.data.username,
+              full_name: r.data.username,
+              role: normalizeRole(r.data.role),
+            } as AppUser)
+        ),
+    };
+
+// ============================================================================
+// Reports (see ReportController - /api/report/**, singular). The backend
+// exposes ~20 report endpoints; only a curated subset relevant to the
+// "Запросы и визуализация" screen is wired up here. See ReportsPage.tsx.
+// ============================================================================
+
+export const reportApi = MOCK_ENABLED
+  ? mockReportApi
+  : {
+      // PawnshopLoanCountReportDto: {clientId, name, fistName, loanCount}
+      // NB: despite the endpoint's name this DTO is actually per-client, not
+      // per-pawnshop - looks like a backend naming/DTO mismatch, flagged in chat.
+      loansCountByClient: () =>
+        api
+          .get<{ clientId: number; name: string; fistName: string; loanCount: number }[]>(
+            "/report/statistics/loans-count"
+          )
+          .then((r) => r.data),
+      // PawnshopLoanShareReportDto: {pawnshopId, name, pawnshopTotal, percentOfTotal}
+      pawnshopLoanShare: () =>
+        api
+          .get<{ pawnshopId: number; name: string; pawnshopTotal: number; percentOfTotal: number }[]>(
+            "/report/pawnshops/loan-share"
+          )
+          .then((r) => r.data),
+      // OverdueLoanReportDto: {loanId, lastName, phone, returnDate}
+      overdueLoans: (reportDate: string) =>
+        api
+          .get<{ loanId: number; lastName: string; phone: string; returnDate: string }[]>(
+            "/report/loans/overdue",
+            { params: { reportDate } }
+          )
+          .then((r) => r.data),
+    };

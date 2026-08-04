@@ -95,8 +95,12 @@ export interface LoanWithItems extends Loan {
 
 export type Role = "ADMIN" | "OPERATOR" | "ANALYST";
 
+// The backend authenticates against real PostgreSQL roles and only ever
+// returns {username, role} (see PostgreSQLAuthService / AuthController) -
+// there is no application-level "users" table/endpoint, so user_id and
+// full_name don't exist server-side. full_name is synthesized client-side
+// as a display fallback (see AuthContext).
 export interface AppUser {
-  user_id: number;
   username: string;
   full_name: string;
   role: Role;
