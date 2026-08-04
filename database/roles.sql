@@ -72,6 +72,14 @@ FROM pg_auth_members am
 -- Права администратора
 -- ============================================
 
+
+
+GRANT USAGE, CREATE
+
+ON SCHEMA public
+
+    TO admin_role;
+
 GRANT ALL PRIVILEGES
     ON ALL TABLES IN SCHEMA public
     TO admin_role;

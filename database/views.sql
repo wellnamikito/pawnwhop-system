@@ -1,14 +1,11 @@
 CREATE OR REPLACE VIEW vw_pawnshop_info AS
 SELECT
-    p.pawnshop_id,
     p.name,
     ot.type_name AS ownership,
     o.last_name || ' ' || o.first_name AS owner_fio,
     d.district_name,
     p.address,
-    p.phone,
-    p.opening_hour,
-    p.closing_hour
+    p.phone
 FROM pawnshop p
          JOIN ownership_type ot
               ON p.ownership_type_id = ot.ownership_type_id
@@ -19,7 +16,6 @@ FROM pawnshop p
 
 CREATE OR REPLACE VIEW vw_loan_info AS
 SELECT
-    l.loan_id,
     p.name AS pawnshop,
     c.last_name || ' ' || c.first_name AS client_fio,
     l.amount,
@@ -59,7 +55,6 @@ FROM pawnshop p
 
 CREATE OR REPLACE VIEW vw_clients_with_loans AS
 SELECT
-    c.client_id,
     c.last_name,
     c.first_name,
     l.loan_id,
@@ -69,28 +64,27 @@ FROM client c
                    ON c.client_id = l.client_id;
 
 CREATE OR REPLACE VIEW vw_clients_without_loans AS
-SELECT
-    c.client_id,
-    c.last_name,
-    c.first_name
-FROM client c
-         LEFT JOIN loan l
-                   ON c.client_id = l.client_id
-WHERE l.loan_id IS NULL;
-
+SELECT client_id, last_name, first_name
+FROM (
+         SELECT c.client_id, c.last_name, c.first_name, l.loan_id
+         FROM client c
+                  LEFT JOIN loan l ON c.client_id = l.client_id
+     ) AS client_loans
+WHERE loan_id IS NULL;
 
 
 CREATE OR REPLACE VIEW vw_pawnshop_loan_count AS
 SELECT
-    p.pawnshop_id,
-    p.name,
+    c.client_id,
+    c.last_name,
+    c.first_name,
     COUNT(l.loan_id) AS loan_count
-FROM pawnshop p
-         JOIN loan l
-              ON p.pawnshop_id = l.pawnshop_id
-GROUP BY
-    p.pawnshop_id,
-    p.name;
+FROM client c
+JOIN loan l ON c.client_id = l.client_id
+GROUP BY c.client_id, c.last_name, c.first_name
+HAVING COUNT(l.loan_id) > 1;
+
+
 
 CREATE OR REPLACE VIEW vw_pawnshop_loan_statistics AS
 SELECT
@@ -142,3 +136,20 @@ FROM pawnshop p
 GROUP BY
     p.pawnshop_id,
     p.name;
+
+CREATE OR REPLACE  VIEW vw_pawnshop_above_average_loan_count AS
+SELECT sub.name,
+       sub.avg_amount
+FROM (
+         SELECT p.name,
+                AVG(l.amount) AS avg_amount
+         FROM pawnshop p
+                  JOIN loan l
+                       ON p.pawnshop_id = l.pawnshop_id
+         GROUP BY p.name
+     ) AS sub
+WHERE sub.avg_amount > (
+    SELECT AVG(amount)
+    FROM loan
+)
+ORDER BY sub.avg_amount DESC;

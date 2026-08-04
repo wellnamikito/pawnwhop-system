@@ -4,7 +4,6 @@ CREATE OR REPLACE FUNCTION get_loans_by_pawnshop(
 RETURNS TABLE (
     loan_id INT,
     last_name fio_domain,
-    first_name fio_domain,
     amount amount_domain,
     issue_date DATE
 )
@@ -13,14 +12,15 @@ AS $$
 SELECT
     l.loan_id,
     c.last_name,
-    c.first_name,
     l.amount,
     l.issue_date
 FROM loan l
-         JOIN client c
-              ON l.client_id = c.client_id
+JOIN client c ON l.client_id = c.client_id
+INNER JOIN pawnshop p on l.pawnshop_id = p.pawnshop_id
 WHERE l.pawnshop_id = p_pawnshop_id;
 $$;
+
+
 
 CREATE OR REPLACE FUNCTION get_items_by_type(
     p_item_type_id INT
