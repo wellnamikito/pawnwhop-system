@@ -61,9 +61,8 @@ GRANT analyst_role TO pawnwhop_analyst;
 
 ALTER ROLE pawnwhop_admin CREATEROLE;
 
-SELECT
-    r.rolname,
-    m.rolname AS member_of
+SELECT r.rolname,
+       m.rolname AS member_of
 FROM pg_auth_members am
          JOIN pg_roles r ON am.member = r.oid
          JOIN pg_roles m ON am.roleid = m.oid;

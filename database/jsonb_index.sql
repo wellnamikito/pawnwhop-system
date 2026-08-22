@@ -20,3 +20,15 @@ CREATE INDEX idx_loan_doc_social_status ON loan_document ((doc -> 'client' ->> '
 
 -- 6. Индекс по выражению: дата возврата ссуды (нужен для запроса удаления из разд. 5.1)
 CREATE INDEX idx_loan_doc_return_date ON loan_document (((doc ->> 'return_date')::date));
+
+CREATE INDEX idx_loan_doc_penalty ON loan_document (((doc ->> 'penalty_percent')::numeric));
+
+CREATE INDEX idx_loan_doc_owner_type ON loan_document ((doc -> 'pawnshop' -> 'owner' ->> 'owner_type'));
+
+DROP INDEX idx_loan_doc_gin;
+DROP INDEX idx_loan_doc_amount;
+DROP INDEX idx_loan_doc_is_returned;
+DROP INDEX idx_loan_doc_district;
+DROP INDEX idx_loan_doc_social_status;
+DROP INDEX idx_loan_doc_return_date;
+DROP INDEX idx_loan_doc_owner_type;
