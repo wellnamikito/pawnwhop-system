@@ -5,6 +5,9 @@ import com.pawnhop.backend.dto.response.ClientResponseDto;
 import com.pawnhop.backend.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,13 +26,14 @@ public class ClientController {
         return clientService.getAllClients();
     }
 
-    // GET /api/clients/{id}
-    @GetMapping("/{id}")
-    public ClientResponseDto getClientById(
-            @PathVariable Integer id
+    // GET /api/clients/page
+    @GetMapping("/page")
+    public Page<ClientResponseDto> getClientById(
+            @PageableDefault(size = 50, sort = "clientId")
+            Pageable pageable
     ){
 
-        return clientService.getClientById(id);
+        return clientService.getClientsPage(pageable);
     }
 
     // POST /api/clients

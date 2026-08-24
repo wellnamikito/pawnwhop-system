@@ -5,6 +5,9 @@ import com.pawnhop.backend.dto.response.OwnerResponseDto;
 import com.pawnhop.backend.service.OwnerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,13 +26,14 @@ public class OwnerController {
         return ownerService.getAllOwners();
     }
 
-    // GET /api/owners/{id}
-    @GetMapping("/{id}")
-    public OwnerResponseDto getOwnerById(
-            @PathVariable Integer id
+    // GET /api/owners/page
+    @GetMapping("/page")
+    public Page<OwnerResponseDto> getOwnerById(
+            @PageableDefault(size = 50, sort = "ownerId")
+            Pageable pageable
     ){
 
-        return ownerService.getOwnerById(id);
+        return ownerService.getOwnersPage(pageable);
     }
 
     // POST /api/owners

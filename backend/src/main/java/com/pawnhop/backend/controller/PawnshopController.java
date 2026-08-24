@@ -6,6 +6,9 @@ import com.pawnhop.backend.dto.response.PawnshopResponseDto;
 import com.pawnhop.backend.service.PawnshopService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +27,14 @@ public class PawnshopController {
         return pawnshopService.getAllPawnshops();
     }
 
-    // GET /api/pawnshops/{id}
-    @GetMapping("/{id}")
-    public PawnshopResponseDto getPawnshopsById(
-            @PathVariable Integer id
+    // GET /api/pawnshops/page
+    @GetMapping("/page")
+    public Page<PawnshopResponseDto> getPawnshopsById(
+            @PageableDefault(size = 50, sort = "pawnshopId")
+            Pageable pageable
     ){
 
-        return pawnshopService.getPawnshopById(id);
+        return pawnshopService.getPawnshopsPage(pageable);
     }
 
     // POST /api/pawnshops

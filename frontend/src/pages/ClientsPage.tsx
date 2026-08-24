@@ -1,55 +1,205 @@
-import React from "react";
-import { ResourceCrudPage, ResourceConfig } from "@/components/ResourceCrudPage";
-import { clientApi } from "@/api/endpoints";
+import { useEffect, useMemo, useState } from "react";
+import api from "@/api/client";
 import type { Client } from "@/types";
-import { useDictionaries } from "@/utils/useDictionaries";
-import { validateFio, validatePhone } from "@/utils/validation";
+
+const PAGE_SIZE = 50;
+
+function clientFio(client: Client) {
+  return [
+    client.lastName,
+    client.firstName,
+    client.middleName,
+  ]
+      .filter(Boolean)
+      .join(" ");
+}
 
 export default function ClientsPage() {
-  const { options, loading } = useDictionaries();
-  if (loading) return <div className="content">Загрузка справочников...</div>;
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const config: ResourceConfig<Client> = {
-    title: "Клиент",
-    permissionResource: "clients",
-    idField: "client_id",
-    service: clientApi,
-    searchPlaceholder: "Поиск по ФИО, адресу или телефону",
-    columns: [
-      { key: "client_id", header: "ID" },
-      {
-        key: "fio",
-        header: "ФИО",
-        accessor: (r) => `${r.last_name} ${r.first_name} ${r.middle_name ?? ""}`,
-        render: (r) => `${r.last_name} ${r.first_name} ${r.middle_name ?? ""}`,
-      },
-      { key: "birth_date", header: "Дата рождения", accessor: (r) => r.birth_date },
-      {
-        key: "social_status_id",
-        header: "Соц. положение",
-        accessor: (r) => options.socialStatuses.find((s) => s.value === r.social_status_id)?.label,
-        render: (r) => options.socialStatuses.find((s) => s.value === r.social_status_id)?.label ?? "—",
-      },
-      { key: "phone", header: "Телефон" },
-    ],
-    fields: [
-      { key: "last_name", label: "Фамилия", type: "text", validate: (v) => validateFio(v) },
-      { key: "first_name", label: "Имя", type: "text", validate: (v) => validateFio(v) },
-      { key: "middle_name", label: "Отчество", type: "text", optional: true, validate: (v) => validateFio(v, false) },
-      { key: "birth_date", label: "Дата рождения", type: "date", optional: true },
-      { key: "social_status_id", label: "Социальное положение", type: "select", options: options.socialStatuses },
-      { key: "address", label: "Домашний адрес", type: "text" },
-      {
-        key: "phone",
-        label: "Телефон",
-        type: "text",
-        placeholder: "+7XXXXXXXXXX",
-        validate: (v) => validatePhone(v) ?? (v ? null : "Обязательное поле"),
-      },
-    ],
-    emptyDraft: {},
-    confirmDeleteLabel: (r) => `клиента «${r.last_name} ${r.first_name}»`,
-  };
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
-  return <ResourceCrudPage config={config} />;
+  const [search, setSearch] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadPage(requestedPage = 0) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await api.get("/clients/page", {
+        params: {
+          page: requestedPage,
+          size: PAGE_SIZE,
+        },
+      });
+
+      const result = response.data;
+
+      setClients(result.content);
+      setPage(result.number);
+      setTotalPages(result.totalPages);
+      setTotalElements(result.totalElements);
+    } catch (caughtError) {
+      const message =
+          caughtError instanceof Error
+              ? caughtError.message
+              : "Не удалось загрузить страницу клиентов.";
+
+      setError(message);
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadPage(0);
+  }, []);
+
+  const visibleClients = useMemo(() => {
+    const text = search.trim().toLowerCase();
+
+    if (!text) {
+      return clients;
+    }
+
+    return clients.filter((client) => {
+      const fio = clientFio(client).toLowerCase();
+      const address = client.address?.toLowerCase() ?? "";
+      const phone = client.phone?.toLowerCase() ?? "";
+      const socialStatus =
+          client.socialStatus?.toLowerCase() ?? "";
+
+      return (
+          fio.includes(text) ||
+          address.includes(text) ||
+          phone.includes(text) ||
+          socialStatus.includes(text)
+      );
+    });
+  }, [clients, search]);
+
+  return (
+      <section>
+        <div className="page-header">
+          <div>
+            <h1>Клиенты</h1>
+
+            <p className="page-description">
+              Всего записей:{" "}
+              {totalElements.toLocaleString("ru-RU")}.
+            </p>
+          </div>
+        </div>
+
+        {error && (
+            <p className="form-error">
+              {error}
+            </p>
+        )}
+
+        <div className="filter-bar">
+          <input
+              placeholder="Поиск по ФИО, адресу или телефону"
+              value={search}
+              onChange={(event) =>
+                  setSearch(event.target.value)
+              }
+          />
+        </div>
+
+        <div className="table-card">
+          {loading ? (
+              <p className="table-message">
+                Загрузка 50 записей…
+              </p>
+          ) : (
+              <>
+                <table className="data-table">
+                  <thead>
+                  <tr>
+                    <th>ФИО</th>
+                    <th>Дата рождения</th>
+                    <th>Соц. положение</th>
+                    <th>Адрес</th>
+                    <th>Телефон</th>
+                  </tr>
+                  </thead>
+
+                  <tbody>
+                  {visibleClients.map((client) => (
+                      <tr key={client.clientId}>
+                        <td>
+                          {clientFio(client)}
+                        </td>
+
+                        <td>
+                          {client.birthDate || "—"}
+                        </td>
+
+                        <td>
+                          {client.socialStatus || "—"}
+                        </td>
+
+                        <td>
+                          {client.address || "—"}
+                        </td>
+
+                        <td>
+                          {client.phone || "—"}
+                        </td>
+                      </tr>
+                  ))}
+
+                  {!visibleClients.length && (
+                      <tr>
+                        <td
+                            colSpan={5}
+                            className="table-message"
+                        >
+                          На этой странице нет подходящих записей.
+                        </td>
+                      </tr>
+                  )}
+                  </tbody>
+                </table>
+
+                <div className="pagination-bar">
+                  <button
+                      className="button"
+                      disabled={loading || page === 0}
+                      onClick={() =>
+                          void loadPage(page - 1)
+                      }
+                  >
+                    Назад
+                  </button>
+
+                  <span>
+                Страница {page + 1} из {totalPages}
+              </span>
+
+                  <button
+                      className="button"
+                      disabled={
+                          loading ||
+                          page >= totalPages - 1
+                      }
+                      onClick={() =>
+                          void loadPage(page + 1)
+                      }
+                  >
+                    Вперёд
+                  </button>
+                </div>
+              </>
+          )}
+        </div>
+      </section>
+  );
 }

@@ -8,6 +8,8 @@ import com.pawnhop.backend.repository.SocialStatusRepo;
 import com.pawnhop.backend.service.ClientService;
 import com.pawnhop.backend.entity.SocialStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +35,10 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public ClientResponseDto getClientById(Integer id){
+    public Page<ClientResponseDto> getClientsPage(Pageable pageable){
 
-        Client client = clientRepo.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Клиент не найден" + id)
-                        );
-
-        return mapToResponse(client);
+       return clientRepo.findAll(pageable)
+               .map(this::mapToResponse);
     }
 
     @Override

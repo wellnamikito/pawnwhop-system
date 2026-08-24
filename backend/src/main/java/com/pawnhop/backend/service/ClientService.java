@@ -2,6 +2,8 @@ package com.pawnhop.backend.service;
 
 import com.pawnhop.backend.dto.request.ClientRequestDto;
 import com.pawnhop.backend.dto.response.ClientResponseDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -9,7 +11,7 @@ public interface ClientService {
 
     List<ClientResponseDto> getAllClients();
 
-    ClientResponseDto getClientById(Integer id);
+    Page<ClientResponseDto> getClientsPage(Pageable pageable);
 
     ClientResponseDto createClient(ClientRequestDto dto);
 

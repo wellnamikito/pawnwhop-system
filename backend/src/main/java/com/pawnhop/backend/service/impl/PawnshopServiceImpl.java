@@ -13,6 +13,8 @@ import com.pawnhop.backend.repository.OwnershipTypeRepo;
 import com.pawnhop.backend.repository.PawnshopRepo;
 import com.pawnhop.backend.service.PawnshopService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,14 +44,10 @@ public class PawnshopServiceImpl implements PawnshopService {
 
     @Override
     @Transactional(readOnly = true)
-    public PawnshopResponseDto getPawnshopById(Integer id){
+    public Page<PawnshopResponseDto> getPawnshopsPage(Pageable pageable){
 
-        Pawnshop pawnshop = pawnshopRepo.findById(id)
-                .orElseThrow(() ->
-                    new RuntimeException("Ломбард не найден:" + id)
-                );
-
-        return mapToResponse(pawnshop);
+        return pawnshopRepo.findAll(pageable)
+                .map(this::mapToResponse);
     }
 
     @Override

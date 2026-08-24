@@ -6,6 +6,10 @@ import com.pawnhop.backend.dto.response.LoanResponseDto;
 import com.pawnhop.backend.service.LoanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,12 +29,12 @@ public class LoanController {
     }
 
     // GET /api/clients/{id}
-    @GetMapping("/{id}")
-    public LoanResponseDto getLoanById(
-            @PathVariable Integer id
-    ){
+    @GetMapping("/page")
+    public Page<LoanResponseDto> getLoanById(
+            @PageableDefault(size = 50, sort = "loanId")
+            Pageable pageable){
 
-        return  loanService.getLoanById(id);
+        return  loanService.getLoansPage(pageable);
     }
 
     // POST /api/loans/{id}

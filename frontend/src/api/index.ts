@@ -1,3 +1,5 @@
+export * from "./models";
+export * from "./resources";
 /**
  * These interfaces mirror the PostgreSQL schema 1:1 so that JSON coming back
  * from the Spring Boot REST API can be typed without transformation.

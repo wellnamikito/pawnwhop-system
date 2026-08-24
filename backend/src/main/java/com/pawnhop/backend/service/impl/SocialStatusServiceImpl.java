@@ -15,7 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SocialStatusServiceImpl implements SocialStatusService {
 
-    private SocialStatusRepo socialStatusRepo;
+    private final SocialStatusRepo socialStatusRepo;
 
     @Override
     @Transactional(readOnly = true)

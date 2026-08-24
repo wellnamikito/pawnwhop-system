@@ -1,52 +1,190 @@
-import React from "react";
-import { ResourceCrudPage, ResourceConfig } from "@/components/ResourceCrudPage";
-import { ownerApi } from "@/api/endpoints";
+import { useEffect, useMemo, useState } from "react";
+import api from "@/api/client";
 import type { Owner } from "@/types";
-import { useDictionaries } from "@/utils/useDictionaries";
-import { validateFio, validatePhone } from "@/utils/validation";
+
+const PAGE_SIZE = 50;
+
+function fullName(owner: Owner) {
+  return `${owner.lastName} ${owner.firstName} ${owner.middleName ?? ""}`.trim();
+}
 
 export default function OwnersPage() {
-  const { options, loading } = useDictionaries();
-  if (loading) return <div className="content">Загрузка справочников...</div>;
+  const [owners, setOwners] = useState<Owner[]>([]);
 
-  const config: ResourceConfig<Owner> = {
-    title: "Владелец",
-    permissionResource: "owners",
-    idField: "owner_id",
-    service: ownerApi,
-    searchPlaceholder: "Поиск по ФИО или телефону",
-    columns: [
-      { key: "owner_id", header: "ID" },
-      {
-        key: "fio",
-        header: "ФИО",
-        accessor: (r) => `${r.last_name} ${r.first_name} ${r.middle_name ?? ""}`,
-        render: (r) => `${r.last_name} ${r.first_name} ${r.middle_name ?? ""}`,
-      },
-      {
-        key: "owner_type_id",
-        header: "Тип владельца",
-        accessor: (r) => options.ownerTypes.find((o) => o.value === r.owner_type_id)?.label,
-        render: (r) => options.ownerTypes.find((o) => o.value === r.owner_type_id)?.label ?? "—",
-      },
-      { key: "phone", header: "Телефон", accessor: (r) => r.phone },
-    ],
-    fields: [
-      { key: "last_name", label: "Фамилия", type: "text", validate: (v) => validateFio(v) },
-      { key: "first_name", label: "Имя", type: "text", validate: (v) => validateFio(v) },
-      { key: "middle_name", label: "Отчество", type: "text", optional: true, validate: (v) => validateFio(v, false) },
-      { key: "owner_type_id", label: "Тип владельца", type: "select", options: options.ownerTypes },
-      {
-        key: "phone",
-        label: "Телефон",
-        type: "text",
-        placeholder: "+7XXXXXXXXXX",
-        validate: (v) => validatePhone(v) ?? (v ? null : "Обязательное поле"),
-      },
-    ],
-    emptyDraft: {},
-    confirmDeleteLabel: (r) => `владельца «${r.last_name} ${r.first_name}»`,
-  };
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
-  return <ResourceCrudPage config={config} />;
+  const [search, setSearch] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadPage(requestedPage = 0) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await api.get("/owners/page", {
+        params: {
+          page: requestedPage,
+          size: PAGE_SIZE,
+        },
+      });
+
+      const result = response.data;
+
+      setOwners(result.content);
+      setPage(result.number);
+      setTotalPages(result.totalPages);
+      setTotalElements(result.totalElements);
+    } catch (caughtError) {
+      const message =
+          caughtError instanceof Error
+              ? caughtError.message
+              : "Не удалось загрузить страницу владельцев.";
+
+      setError(message);
+      setOwners([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadPage(0);
+  }, []);
+
+  const visibleOwners = useMemo(() => {
+    const text = search.trim().toLowerCase();
+
+    if (!text) {
+      return owners;
+    }
+
+    return owners.filter((owner) => {
+      const name = fullName(owner).toLowerCase();
+
+      const ownerType =
+          owner.ownerType?.toLowerCase() ?? "";
+
+      const phone =
+          owner.phone?.toLowerCase() ?? "";
+
+      return (
+          name.includes(text) ||
+          ownerType.includes(text) ||
+          phone.includes(text)
+      );
+    });
+  }, [owners, search]);
+
+  return (
+      <section>
+        <div className="page-header">
+          <div>
+            <h1>Владельцы</h1>
+
+            <p className="page-description">
+              Всего записей:{" "}
+              {totalElements.toLocaleString("ru-RU")}.
+            </p>
+          </div>
+        </div>
+
+        {error && (
+            <p className="form-error">
+              {error}
+            </p>
+        )}
+
+        <div className="filter-bar">
+          <input
+              placeholder="Поиск по ФИО, типу владельца или телефону"
+              value={search}
+              onChange={(event) =>
+                  setSearch(event.target.value)
+              }
+          />
+        </div>
+
+        <div className="table-card">
+          {loading ? (
+              <p className="table-message">
+                Загрузка 50 записей…
+              </p>
+          ) : (
+              <>
+                <table className="data-table">
+                  <thead>
+                  <tr>
+                    <th>ФИО</th>
+                    <th>Тип владельца</th>
+                    <th>Телефон</th>
+                  </tr>
+                  </thead>
+
+                  <tbody>
+                  {visibleOwners.map((owner) => (
+                      <tr key={owner.id}>
+                        <td>
+                          {fullName(owner)}
+                        </td>
+
+                        <td>
+                          {owner.ownerType || "—"}
+                        </td>
+
+                        <td>
+                          {owner.phone || "—"}
+                        </td>
+                      </tr>
+                  ))}
+
+                  {!visibleOwners.length && (
+                      <tr>
+                        <td
+                            colSpan={3}
+                            className="table-message"
+                        >
+                          На этой странице нет подходящих записей.
+                        </td>
+                      </tr>
+                  )}
+                  </tbody>
+                </table>
+
+                <div className="pagination-bar">
+                  <button
+                      className="button"
+                      disabled={loading || page === 0}
+                      onClick={() =>
+                          void loadPage(page - 1)
+                      }
+                  >
+                    Назад
+                  </button>
+
+                  <span>
+                Страница {page + 1} из {totalPages}
+              </span>
+
+                  <button
+                      className="button"
+                      disabled={
+                          loading ||
+                          page >= totalPages - 1
+                      }
+                      onClick={() =>
+                          void loadPage(page + 1)
+                      }
+                  >
+                    Вперёд
+                  </button>
+                </div>
+              </>
+          )}
+        </div>
+      </section>
+  );
 }

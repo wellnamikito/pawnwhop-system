@@ -9,6 +9,8 @@ import com.pawnhop.backend.repository.OwnerTypeRepo;
 
 import com.pawnhop.backend.service.OwnerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,14 +36,10 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     @Transactional(readOnly = true)
-    public OwnerResponseDto getOwnerById(Integer id){
+    public Page<OwnerResponseDto> getOwnersPage(Pageable pageable){
 
-        Owner owner = ownerRepo.findById(id)
-                .orElseThrow(()->
-                    new RuntimeException("Владелец не найден" + id)
-                );
-
-        return mapPoResponse(owner);
+        return ownerRepo.findAll(pageable)
+                .map(this::mapPoResponse);
     }
 
     @Override
