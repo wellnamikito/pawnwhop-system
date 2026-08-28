@@ -1,205 +1,947 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "@/api/client";
-import type { Client } from "@/types";
+import { useEffect, useState } from "react";
+
+import { clientsApi } from "@/api/clients";
+import { socialStatusApi } from "@/api/dictionary";
+
+import type {
+    Client,
+    ClientRequest,
+} from "@/types/client";
+
+import type { Dictionary } from "@/types/dictionary";
 
 const PAGE_SIZE = 50;
 
-function clientFio(client: Client) {
-  return [
-    client.lastName,
-    client.firstName,
-    client.middleName,
-  ]
-      .filter(Boolean)
-      .join(" ");
-}
-
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
+    const [items, setItems] = useState<Client[]>([]);
 
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
+    const [socialStatuses, setSocialStatuses] =
+        useState<Dictionary[]>([]);
 
-  const [search, setSearch] = useState("");
+    const [page, setPage] = useState(0);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+    const [totalElements, setTotalElements] =
+        useState(0);
 
-  async function loadPage(requestedPage = 0) {
-    setLoading(true);
-    setError("");
+    const [totalPages, setTotalPages] =
+        useState(0);
 
-    try {
-      const response = await api.get("/clients/page", {
-        params: {
-          page: requestedPage,
-          size: PAGE_SIZE,
-        },
-      });
+    const [search, setSearch] = useState("");
 
-      const result = response.data;
+    const [loading, setLoading] = useState(true);
 
-      setClients(result.content);
-      setPage(result.number);
-      setTotalPages(result.totalPages);
-      setTotalElements(result.totalElements);
-    } catch (caughtError) {
-      const message =
-          caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить страницу клиентов.";
+    const [error, setError] = useState("");
 
-      setError(message);
-      setClients([]);
-    } finally {
-      setLoading(false);
+    const [modalOpen, setModalOpen] =
+        useState(false);
+
+    const [editingItem, setEditingItem] =
+        useState<Client | null>(null);
+
+    const [lastName, setLastName] =
+        useState("");
+
+    const [firstName, setFirstName] =
+        useState("");
+
+    const [middleName, setMiddleName] =
+        useState("");
+
+    const [birthDate, setBirthDate] =
+        useState("");
+
+    const [socialStatusId, setSocialStatusId] =
+        useState<number>(0);
+
+    const [address, setAddress] =
+        useState("");
+
+    const [phone, setPhone] =
+        useState("");
+
+
+    /*
+     * Загрузка клиентов.
+     *
+     * requestedPage и requestedSearch всегда передаются
+     * явно из места вызова, поэтому функция не зависит
+     * от устаревших значений state.
+     */
+    async function loadClients(
+        requestedPage: number,
+        requestedSearch: string
+    ) {
+        setLoading(true);
+        setError("");
+
+        try {
+            const result =
+                await clientsApi.getPage(
+                    requestedPage,
+                    PAGE_SIZE,
+                    requestedSearch.trim()
+                );
+
+            setItems(result.content);
+
+            setPage(result.number);
+
+            setTotalElements(
+                result.totalElements
+            );
+
+            setTotalPages(
+                result.totalPages
+            );
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Не удалось загрузить клиентов."
+            );
+
+            setItems([]);
+
+            setTotalElements(0);
+
+            setTotalPages(0);
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  useEffect(() => {
-    void loadPage(0);
-  }, []);
 
-  const visibleClients = useMemo(() => {
-    const text = search.trim().toLowerCase();
+    /*
+     * Загрузка справочников.
+     */
+    async function loadDictionaries() {
+        try {
+            const result =
+                await socialStatusApi.getAll();
 
-    if (!text) {
-      return clients;
+            setSocialStatuses(result);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
-    return clients.filter((client) => {
-      const fio = clientFio(client).toLowerCase();
-      const address = client.address?.toLowerCase() ?? "";
-      const phone = client.phone?.toLowerCase() ?? "";
-      const socialStatus =
-          client.socialStatus?.toLowerCase() ?? "";
 
-      return (
-          fio.includes(text) ||
-          address.includes(text) ||
-          phone.includes(text) ||
-          socialStatus.includes(text)
-      );
-    });
-  }, [clients, search]);
+    /*
+     * Первоначальная загрузка страницы.
+     *
+     * Всегда начинаем с page = 0.
+     */
+    useEffect(() => {
+        void loadClients(0, "");
+        void loadDictionaries();
+    }, []);
 
-  return (
-      <section>
-        <div className="page-header">
-          <div>
-            <h1>Клиенты</h1>
 
-            <p className="page-description">
-              Всего записей:{" "}
-              {totalElements.toLocaleString("ru-RU")}.
-            </p>
-          </div>
-        </div>
+    /*
+     * Поиск по всей базе.
+     *
+     * При каждом изменении search:
+     * 1. ждём 400 мс;
+     * 2. сбрасываем pagination на первую страницу;
+     * 3. отправляем новый запрос на backend.
+     *
+     * Важно: search.trim() используется только при запросе,
+     * поэтому пробелы в начале/конце не влияют на поиск.
+     */
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            void loadClients(0, search);
+        }, 400);
 
-        {error && (
-            <p className="form-error">
-              {error}
-            </p>
-        )}
+        return () => {
+            clearTimeout(timeoutId);
+        };
+    }, [search]);
 
-        <div className="filter-bar">
-          <input
-              placeholder="Поиск по ФИО, адресу или телефону"
-              value={search}
-              onChange={(event) =>
-                  setSearch(event.target.value)
-              }
-          />
-        </div>
 
-        <div className="table-card">
-          {loading ? (
-              <p className="table-message">
-                Загрузка 50 записей…
-              </p>
-          ) : (
-              <>
-                <table className="data-table">
-                  <thead>
-                  <tr>
-                    <th>ФИО</th>
-                    <th>Дата рождения</th>
-                    <th>Соц. положение</th>
-                    <th>Адрес</th>
-                    <th>Телефон</th>
-                  </tr>
-                  </thead>
+    function openCreate() {
+        setEditingItem(null);
 
-                  <tbody>
-                  {visibleClients.map((client) => (
-                      <tr key={client.clientId}>
-                        <td>
-                          {clientFio(client)}
-                        </td>
+        setLastName("");
 
-                        <td>
-                          {client.birthDate || "—"}
-                        </td>
+        setFirstName("");
 
-                        <td>
-                          {client.socialStatus || "—"}
-                        </td>
+        setMiddleName("");
 
-                        <td>
-                          {client.address || "—"}
-                        </td>
+        setBirthDate("");
 
-                        <td>
-                          {client.phone || "—"}
-                        </td>
-                      </tr>
-                  ))}
+        setSocialStatusId(0);
 
-                  {!visibleClients.length && (
-                      <tr>
-                        <td
-                            colSpan={5}
-                            className="table-message"
-                        >
-                          На этой странице нет подходящих записей.
-                        </td>
-                      </tr>
-                  )}
-                  </tbody>
-                </table>
+        setAddress("");
 
-                <div className="pagination-bar">
-                  <button
-                      className="button"
-                      disabled={loading || page === 0}
-                      onClick={() =>
-                          void loadPage(page - 1)
-                      }
-                  >
-                    Назад
-                  </button>
+        setPhone("");
 
-                  <span>
-                Страница {page + 1} из {totalPages}
-              </span>
+        setError("");
 
-                  <button
-                      className="button"
-                      disabled={
-                          loading ||
-                          page >= totalPages - 1
-                      }
-                      onClick={() =>
-                          void loadPage(page + 1)
-                      }
-                  >
-                    Вперёд
-                  </button>
+        setModalOpen(true);
+    }
+
+
+    function openEdit(item: Client) {
+        setEditingItem(item);
+
+        setLastName(
+            item.lastName
+        );
+
+        setFirstName(
+            item.firstName
+        );
+
+        setMiddleName(
+            item.middleName ?? ""
+        );
+
+        setBirthDate(
+            item.birthDate ?? ""
+        );
+
+        const status =
+            socialStatuses.find(
+                (itemStatus) =>
+                    itemStatus.name ===
+                    item.socialStatus
+            );
+
+        setSocialStatusId(
+            status?.id ?? 0
+        );
+
+        setAddress(
+            item.address ?? ""
+        );
+
+        setPhone(
+            item.phone ?? ""
+        );
+
+        setError("");
+
+        setModalOpen(true);
+    }
+
+
+    function closeModal() {
+        setModalOpen(false);
+
+        setEditingItem(null);
+    }
+
+
+    async function saveClient() {
+        if (!lastName.trim()) {
+            setError(
+                "Введите фамилию."
+            );
+            return;
+        }
+
+        if (!firstName.trim()) {
+            setError(
+                "Введите имя."
+            );
+            return;
+        }
+
+        if (!socialStatusId) {
+            setError(
+                "Выберите социальный статус."
+            );
+            return;
+        }
+
+        if (!address.trim()) {
+            setError(
+                "Введите адрес."
+            );
+            return;
+        }
+
+
+        const data: ClientRequest = {
+            lastName:
+                lastName.trim(),
+
+            firstName:
+                firstName.trim(),
+
+            middleName:
+                middleName.trim() ||
+                undefined,
+
+            birthDate:
+                birthDate ||
+                undefined,
+
+            socialStatusId,
+
+            address:
+                address.trim(),
+
+            phone:
+                phone.trim() ||
+                undefined,
+        };
+
+
+        try {
+            setError("");
+
+            if (editingItem) {
+                await clientsApi.update(
+                    editingItem.clientId,
+                    data
+                );
+            } else {
+                await clientsApi.create(
+                    data
+                );
+            }
+
+            closeModal();
+
+            /*
+             * После сохранения остаёмся на той же странице
+             * и сохраняем текущий поиск.
+             */
+            await loadClients(
+                page,
+                search
+            );
+
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Ошибка сохранения клиента."
+            );
+        }
+    }
+
+
+    async function deleteClient(
+        id: number
+    ) {
+        const confirmed =
+            window.confirm(
+                "Удалить клиента?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+            setError("");
+
+            await clientsApi.remove(id);
+
+
+            /*
+             * Если удалили последнюю запись
+             * на текущей странице, переходим
+             * на предыдущую.
+             */
+            const targetPage =
+                page > 0 &&
+                items.length === 1
+                    ? page - 1
+                    : page;
+
+
+            await loadClients(
+                targetPage,
+                search
+            );
+
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Ошибка удаления клиента."
+            );
+        }
+    }
+
+
+    /*
+     * Переход на страницу.
+     *
+     * Текущий search сохраняется.
+     */
+    function goToPage(
+        targetPage: number
+    ) {
+        if (
+            targetPage < 0 ||
+            targetPage >= totalPages ||
+            targetPage === page
+        ) {
+            return;
+        }
+
+        void loadClients(
+            targetPage,
+            search
+        );
+    }
+
+
+    function previousPage() {
+        goToPage(page - 1);
+    }
+
+
+    function nextPage() {
+        goToPage(page + 1);
+    }
+
+
+    function getPageNumbers(): (
+        number | "ellipsis"
+    )[] {
+        if (totalPages <= 7) {
+            return Array.from(
+                { length: totalPages },
+                (_, index) => index
+            );
+        }
+
+
+        const pages: (
+            number | "ellipsis"
+        )[] = [];
+
+        pages.push(0);
+
+
+        if (page > 3) {
+            pages.push("ellipsis");
+        }
+
+
+        const start = Math.max(
+            1,
+            page - 2
+        );
+
+        const end = Math.min(
+            totalPages - 2,
+            page + 2
+        );
+
+
+        for (
+            let i = start;
+            i <= end;
+            i++
+        ) {
+            pages.push(i);
+        }
+
+
+        if (
+            page < totalPages - 4
+        ) {
+            pages.push("ellipsis");
+        }
+
+
+        pages.push(
+            totalPages - 1
+        );
+
+
+        return pages;
+    }
+
+
+    return (
+        <section>
+
+            <div className="page-header">
+
+                <div>
+
+                    <h1>
+                        Клиенты
+                    </h1>
+
+                    <p className="page-description">
+                        Всего записей:{" "}
+                        {totalElements}
+                    </p>
+
                 </div>
-              </>
-          )}
-        </div>
-      </section>
-  );
+
+
+                <button
+                    className="button button-primary"
+                    onClick={openCreate}
+                >
+                    Добавить
+                </button>
+
+            </div>
+
+
+            {error && (
+                <p className="form-error">
+                    {error}
+                </p>
+            )}
+
+
+            <div className="filter-bar">
+
+                <input
+                    placeholder="Поиск по клиентам"
+                    value={search}
+                    onChange={(e) =>
+                        setSearch(
+                            e.target.value
+                        )
+                    }
+                />
+
+            </div>
+
+
+            <div className="table-card">
+
+                {loading ? (
+
+                    <p className="table-message">
+                        Загрузка...
+                    </p>
+
+                ) : (
+
+                    <>
+
+                        <table className="data-table">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>
+                                        ФИО
+                                    </th>
+
+                                    <th>
+                                        Дата рождения
+                                    </th>
+
+                                    <th>
+                                        Социальный статус
+                                    </th>
+
+                                    <th>
+                                        Адрес
+                                    </th>
+
+                                    <th>
+                                        Телефон
+                                    </th>
+
+                                    <th>
+                                        Действия
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                {items.map(
+                                    (item) => (
+
+                                        <tr
+                                            key={
+                                                item.clientId
+                                            }
+                                        >
+
+                                            <td>
+                                                {item.lastName}{" "}
+                                                {item.firstName}{" "}
+                                                {item.middleName ||
+                                                    ""}
+                                            </td>
+
+                                            <td>
+                                                {item.birthDate ||
+                                                    "—"}
+                                            </td>
+
+                                            <td>
+                                                {item.socialStatus ||
+                                                    "—"}
+                                            </td>
+
+                                            <td>
+                                                {item.address ||
+                                                    "—"}
+                                            </td>
+
+                                            <td>
+                                                {item.phone ||
+                                                    "—"}
+                                            </td>
+
+                                            <td>
+
+                                                <div className="table-actions">
+
+                                                    <button
+                                                        className="button button-secondary"
+                                                        onClick={() =>
+                                                            openEdit(
+                                                                item
+                                                            )
+                                                        }
+                                                    >
+                                                        Изменить
+                                                    </button>
+
+
+                                                    <button
+                                                        className="button button-danger"
+                                                        onClick={() =>
+                                                            deleteClient(
+                                                                item.clientId
+                                                            )
+                                                        }
+                                                    >
+                                                        Удалить
+                                                    </button>
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
+
+                                    )
+                                )}
+
+
+                                {!items.length && (
+
+                                    <tr>
+
+                                        <td
+                                            colSpan={6}
+                                            className="table-message"
+                                        >
+                                            Нет данных
+                                        </td>
+
+                                    </tr>
+
+                                )}
+
+                            </tbody>
+
+                        </table>
+
+
+                        {totalPages > 1 && (
+
+                            <div className="pagination">
+
+                                <button
+                                    className="button button-secondary"
+                                    onClick={
+                                        previousPage
+                                    }
+                                    disabled={
+                                        page === 0
+                                    }
+                                    aria-label="Предыдущая страница"
+                                >
+                                    ‹
+                                </button>
+
+
+                                {getPageNumbers().map(
+                                    (
+                                        pageNumber,
+                                        index
+                                    ) => {
+
+                                        if (
+                                            pageNumber ===
+                                            "ellipsis"
+                                        ) {
+                                            return (
+                                                <span
+                                                    key={`ellipsis-${index}`}
+                                                    className="pagination-ellipsis"
+                                                >
+                                                    …
+                                                </span>
+                                            );
+                                        }
+
+
+                                        return (
+                                            <button
+                                                key={
+                                                    pageNumber
+                                                }
+                                                className={
+                                                    pageNumber ===
+                                                    page
+                                                        ? "button button-primary pagination-page active"
+                                                        : "button button-secondary pagination-page"
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        pageNumber
+                                                    )
+                                                }
+                                                disabled={
+                                                    pageNumber ===
+                                                    page
+                                                }
+                                            >
+                                                {pageNumber + 1}
+                                            </button>
+                                        );
+                                    }
+                                )}
+
+
+                                <button
+                                    className="button button-secondary"
+                                    onClick={
+                                        nextPage
+                                    }
+                                    disabled={
+                                        page >=
+                                        totalPages - 1
+                                    }
+                                    aria-label="Следующая страница"
+                                >
+                                    ›
+                                </button>
+
+                            </div>
+
+                        )}
+
+                    </>
+
+                )}
+
+            </div>
+
+
+            {modalOpen && (
+
+                <div className="modal-backdrop">
+
+                    <div className="modal-card">
+
+                        <div className="modal-header">
+
+                            <h2>
+                                {editingItem
+                                    ? "Редактирование клиента"
+                                    : "Добавление клиента"}
+                            </h2>
+
+
+                            <button
+                                className="close-button"
+                                onClick={
+                                    closeModal
+                                }
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+                        <div className="form-grid">
+
+                            <label>
+                                Фамилия
+
+                                <input
+                                    value={lastName}
+                                    onChange={(e) =>
+                                        setLastName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+                                Имя
+
+                                <input
+                                    value={firstName}
+                                    onChange={(e) =>
+                                        setFirstName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+                                Отчество
+
+                                <input
+                                    value={middleName}
+                                    onChange={(e) =>
+                                        setMiddleName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+                                Дата рождения
+
+                                <input
+                                    type="date"
+                                    value={birthDate}
+                                    onChange={(e) =>
+                                        setBirthDate(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+                                Социальный статус
+
+                                <select
+                                    value={
+                                        socialStatusId
+                                    }
+                                    onChange={(e) =>
+                                        setSocialStatusId(
+                                            Number(
+                                                e.target.value
+                                            )
+                                        )
+                                    }
+                                >
+
+                                    <option value={0}>
+                                        Выберите статус
+                                    </option>
+
+
+                                    {socialStatuses.map(
+                                        (status) => (
+
+                                            <option
+                                                key={
+                                                    status.id
+                                                }
+                                                value={
+                                                    status.id
+                                                }
+                                            >
+                                                {status.name}
+                                            </option>
+
+                                        )
+                                    )}
+
+                                </select>
+
+                            </label>
+
+
+                            <label>
+                                Адрес
+
+                                <input
+                                    value={address}
+                                    onChange={(e) =>
+                                        setAddress(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+                                Телефон
+
+                                <input
+                                    value={phone}
+                                    onChange={(e) =>
+                                        setPhone(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="+79493716918"
+                                />
+
+                            </label>
+
+                        </div>
+
+
+                        <div className="modal-footer">
+
+                            <button
+                                className="button button-secondary"
+                                onClick={
+                                    closeModal
+                                }
+                            >
+                                Отмена
+                            </button>
+
+
+                            <button
+                                className="button button-primary"
+                                onClick={
+                                    saveClient
+                                }
+                            >
+                                Сохранить
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            )}
+
+        </section>
+    );
 }

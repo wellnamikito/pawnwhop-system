@@ -1,190 +1,913 @@
-import { useEffect, useMemo, useState } from "react";
-import api from "@/api/client";
-import type { Owner } from "@/types";
+import { useEffect, useRef, useState } from "react";
+
+import { ownerApi } from "@/api/owner";
+import { ownerTypeApi } from "@/api/dictionary";
+
+import type {
+    Owner,
+    OwnerRequest,
+} from "@/types/owner";
+
+import type { Dictionary } from "@/types/dictionary";
 
 const PAGE_SIZE = 50;
 
-function fullName(owner: Owner) {
-  return `${owner.lastName} ${owner.firstName} ${owner.middleName ?? ""}`.trim();
-}
-
 export default function OwnersPage() {
-  const [owners, setOwners] = useState<Owner[]>([]);
+    const [items, setItems] =
+        useState<Owner[]>([]);
 
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
+    const [ownerTypes, setOwnerTypes] =
+        useState<Dictionary[]>([]);
 
-  const [search, setSearch] = useState("");
+    const [page, setPage] =
+        useState(0);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+    const [totalElements, setTotalElements] =
+        useState(0);
 
-  async function loadPage(requestedPage = 0) {
-    setLoading(true);
-    setError("");
+    const [totalPages, setTotalPages] =
+        useState(0);
 
-    try {
-      const response = await api.get("/owners/page", {
-        params: {
-          page: requestedPage,
-          size: PAGE_SIZE,
-        },
-      });
+    const [search, setSearch] =
+        useState("");
 
-      const result = response.data;
+    const [loading, setLoading] =
+        useState(true);
 
-      setOwners(result.content);
-      setPage(result.number);
-      setTotalPages(result.totalPages);
-      setTotalElements(result.totalElements);
-    } catch (caughtError) {
-      const message =
-          caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить страницу владельцев.";
+    const [error, setError] =
+        useState("");
 
-      setError(message);
-      setOwners([]);
-    } finally {
-      setLoading(false);
+    const [modalOpen, setModalOpen] =
+        useState(false);
+
+    const [editingItem, setEditingItem] =
+        useState<Owner | null>(null);
+
+    const [lastName, setLastName] =
+        useState("");
+
+    const [firstName, setFirstName] =
+        useState("");
+
+    const [middleName, setMiddleName] =
+        useState("");
+
+    const [ownerTypeId, setOwnerTypeId] =
+        useState<number>(0);
+
+    const [phone, setPhone] =
+        useState("");
+
+
+    /*
+     * Загрузка страницы владельцев.
+     *
+     * Поиск выполняется на backend.
+     */
+    async function loadOwners(
+        requestedPage = page,
+        requestedSearch = search
+    ) {
+        setLoading(true);
+        setError("");
+
+        try {
+            const result =
+                await ownerApi.getAll(
+                    requestedPage,
+                    PAGE_SIZE,
+                    requestedSearch
+                );
+
+            setItems(
+                result.content
+            );
+
+            setPage(
+                result.number
+            );
+
+            setTotalElements(
+                result.totalElements
+            );
+
+            setTotalPages(
+                result.totalPages
+            );
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Не удалось загрузить владельцев."
+            );
+
+            setItems([]);
+            setTotalElements(0);
+            setTotalPages(0);
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  useEffect(() => {
-    void loadPage(0);
-  }, []);
 
-  const visibleOwners = useMemo(() => {
-    const text = search.trim().toLowerCase();
+    /*
+     * Загрузка типов владельцев.
+     */
+    async function loadOwnerTypes() {
+        try {
+            const result =
+                await ownerTypeApi.getAll();
 
-    if (!text) {
-      return owners;
+            setOwnerTypes(result);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
-    return owners.filter((owner) => {
-      const name = fullName(owner).toLowerCase();
 
-      const ownerType =
-          owner.ownerType?.toLowerCase() ?? "";
+    /*
+     * Первоначальная загрузка.
+     */
+    useEffect(() => {
+        void loadOwners(0);
+        void loadOwnerTypes();
+    }, []);
 
-      const phone =
-          owner.phone?.toLowerCase() ?? "";
 
-      return (
-          name.includes(text) ||
-          ownerType.includes(text) ||
-          phone.includes(text)
-      );
-    });
-  }, [owners, search]);
+    /*
+     * Поиск по всей базе через backend.
+     *
+     * Debounce 400 мс, чтобы не отправлять
+     * запрос на каждое нажатие клавиши.
+     *
+     * Первый рендер пропускаем, потому что
+     * начальную загрузку выполняет эффект выше.
+     */
+    const isFirstRender = useRef(true);
 
-  return (
-      <section>
-        <div className="page-header">
-          <div>
-            <h1>Владельцы</h1>
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
 
-            <p className="page-description">
-              Всего записей:{" "}
-              {totalElements.toLocaleString("ru-RU")}.
-            </p>
-          </div>
-        </div>
+        const timeoutId =
+            setTimeout(() => {
+                void loadOwners(0, search);
+            }, 400);
 
-        {error && (
-            <p className="form-error">
-              {error}
-            </p>
-        )}
+        return () =>
+            clearTimeout(timeoutId);
+    }, [search]);
 
-        <div className="filter-bar">
-          <input
-              placeholder="Поиск по ФИО, типу владельца или телефону"
-              value={search}
-              onChange={(event) =>
-                  setSearch(event.target.value)
-              }
-          />
-        </div>
 
-        <div className="table-card">
-          {loading ? (
-              <p className="table-message">
-                Загрузка 50 записей…
-              </p>
-          ) : (
-              <>
-                <table className="data-table">
-                  <thead>
-                  <tr>
-                    <th>ФИО</th>
-                    <th>Тип владельца</th>
-                    <th>Телефон</th>
-                  </tr>
-                  </thead>
+    /*
+     * Добавление владельца.
+     */
+    function openCreate() {
+        setEditingItem(null);
 
-                  <tbody>
-                  {visibleOwners.map((owner) => (
-                      <tr key={owner.id}>
-                        <td>
-                          {fullName(owner)}
-                        </td>
+        setLastName("");
+        setFirstName("");
+        setMiddleName("");
+        setOwnerTypeId(0);
+        setPhone("");
 
-                        <td>
-                          {owner.ownerType || "—"}
-                        </td>
+        setError("");
+        setModalOpen(true);
+    }
 
-                        <td>
-                          {owner.phone || "—"}
-                        </td>
-                      </tr>
-                  ))}
 
-                  {!visibleOwners.length && (
-                      <tr>
-                        <td
-                            colSpan={3}
-                            className="table-message"
-                        >
-                          На этой странице нет подходящих записей.
-                        </td>
-                      </tr>
-                  )}
-                  </tbody>
-                </table>
+    /*
+     * Редактирование владельца.
+     */
+    function openEdit(
+        item: Owner
+    ) {
+        setEditingItem(item);
 
-                <div className="pagination-bar">
-                  <button
-                      className="button"
-                      disabled={loading || page === 0}
-                      onClick={() =>
-                          void loadPage(page - 1)
-                      }
-                  >
-                    Назад
-                  </button>
+        setLastName(
+            item.lastName
+        );
 
-                  <span>
-                Страница {page + 1} из {totalPages}
-              </span>
+        setFirstName(
+            item.firstName
+        );
 
-                  <button
-                      className="button"
-                      disabled={
-                          loading ||
-                          page >= totalPages - 1
-                      }
-                      onClick={() =>
-                          void loadPage(page + 1)
-                      }
-                  >
-                    Вперёд
-                  </button>
+        setMiddleName(
+            item.middleName ?? ""
+        );
+
+        setPhone(
+            item.phone ?? ""
+        );
+
+        const type =
+            ownerTypes.find(
+                (itemType) =>
+                    itemType.name ===
+                    item.ownerType
+            );
+
+        setOwnerTypeId(
+            type?.id ?? 0
+        );
+
+        setError("");
+        setModalOpen(true);
+    }
+
+
+    /*
+     * Закрытие модального окна.
+     */
+    function closeModal() {
+        setModalOpen(false);
+        setEditingItem(null);
+    }
+
+
+    /*
+     * Сохранение владельца.
+     */
+    async function saveOwner() {
+        if (!lastName.trim()) {
+            setError(
+                "Введите фамилию."
+            );
+            return;
+        }
+
+        if (!firstName.trim()) {
+            setError(
+                "Введите имя."
+            );
+            return;
+        }
+
+        if (!ownerTypeId) {
+            setError(
+                "Выберите тип владельца."
+            );
+            return;
+        }
+
+        if (!phone.trim()) {
+            setError(
+                "Введите телефон."
+            );
+            return;
+        }
+
+
+        const data: OwnerRequest = {
+            lastName:
+                lastName.trim(),
+
+            firstName:
+                firstName.trim(),
+
+            middleName:
+                middleName.trim() ||
+                undefined,
+
+            ownerTypeId,
+
+            phone:
+                phone.trim(),
+        };
+
+
+        try {
+            setError("");
+
+            if (editingItem) {
+                await ownerApi.update(
+                    editingItem.id,
+                    data
+                );
+            } else {
+                await ownerApi.create(
+                    data
+                );
+            }
+
+            closeModal();
+
+            /*
+             * После сохранения остаёмся
+             * на текущей странице и сохраняем
+             * текущий поиск.
+             */
+            await loadOwners(
+                page,
+                search
+            );
+
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Ошибка сохранения владельца."
+            );
+        }
+    }
+
+
+    /*
+     * Удаление владельца.
+     */
+    async function deleteOwner(
+        id: number
+    ) {
+        const confirmed =
+            window.confirm(
+                "Удалить владельца?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+            setError("");
+
+            await ownerApi.remove(id);
+
+
+            /*
+             * Если удалили последний
+             * элемент текущей страницы,
+             * переходим на предыдущую.
+             */
+            const targetPage =
+                page > 0 &&
+                items.length === 1
+                    ? page - 1
+                    : page;
+
+
+            await loadOwners(
+                targetPage,
+                search
+            );
+
+        } catch (e) {
+            console.error(e);
+
+            setError(
+                "Ошибка удаления владельца."
+            );
+        }
+    }
+
+
+    /*
+     * Переход на конкретную страницу.
+     *
+     * Backend использует нумерацию:
+     * 0, 1, 2...
+     *
+     * Пользователь видит:
+     * 1, 2, 3...
+     */
+    function goToPage(
+        targetPage: number
+    ) {
+        if (
+            targetPage < 0 ||
+            targetPage >= totalPages ||
+            targetPage === page
+        ) {
+            return;
+        }
+
+        /*
+         * Search НЕ сбрасываем.
+         *
+         * Если пользователь ищет "Иванов",
+         * переключение страницы должно продолжать
+         * показывать результаты поиска.
+         */
+        void loadOwners(
+            targetPage,
+            search
+        );
+    }
+
+
+    /*
+     * Предыдущая страница.
+     */
+    function previousPage() {
+        goToPage(
+            page - 1
+        );
+    }
+
+
+    /*
+     * Следующая страница.
+     */
+    function nextPage() {
+        goToPage(
+            page + 1
+        );
+    }
+
+
+    /*
+     * Формируем номера страниц.
+     */
+    function getPageNumbers(): (
+        number | "ellipsis"
+    )[] {
+        if (totalPages <= 7) {
+            return Array.from(
+                { length: totalPages },
+                (_, index) => index
+            );
+        }
+
+        const pages: (
+            number | "ellipsis"
+        )[] = [];
+
+        pages.push(0);
+
+        if (page > 3) {
+            pages.push("ellipsis");
+        }
+
+        const start = Math.max(
+            1,
+            page - 2
+        );
+
+        const end = Math.min(
+            totalPages - 2,
+            page + 2
+        );
+
+        for (
+            let i = start;
+            i <= end;
+            i++
+        ) {
+            pages.push(i);
+        }
+
+        if (
+            page < totalPages - 4
+        ) {
+            pages.push("ellipsis");
+        }
+
+        pages.push(
+            totalPages - 1
+        );
+
+        return pages;
+    }
+
+
+    return (
+        <section>
+
+            <div className="page-header">
+
+                <div>
+
+                    <h1>
+                        Владельцы
+                    </h1>
+
+                    <p className="page-description">
+                        Всего записей:{" "}
+                        {totalElements}
+                    </p>
+
                 </div>
-              </>
-          )}
-        </div>
-      </section>
-  );
+
+
+                <button
+                    className="button button-primary"
+                    onClick={openCreate}
+                >
+                    Добавить
+                </button>
+
+            </div>
+
+
+            {error && (
+                <p className="form-error">
+                    {error}
+                </p>
+            )}
+
+
+            <div className="filter-bar">
+
+                <input
+                    placeholder="Поиск по владельцам"
+                    value={search}
+                    onChange={(e) =>
+                        setSearch(
+                            e.target.value
+                        )
+                    }
+                />
+
+            </div>
+
+
+            <div className="table-card">
+
+                {loading ? (
+
+                    <p className="table-message">
+                        Загрузка...
+                    </p>
+
+                ) : (
+
+                    <>
+
+                        <table className="data-table">
+
+                            <thead>
+
+                            <tr>
+
+                                <th>
+                                    ФИО
+                                </th>
+
+                                <th>
+                                    Тип владельца
+                                </th>
+
+                                <th>
+                                    Телефон
+                                </th>
+
+                                <th>
+                                    Действия
+                                </th>
+
+                            </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                            {items.map(
+                                (item) => (
+
+                                    <tr
+                                        key={item.id}
+                                    >
+
+                                        <td>
+                                            {item.lastName}{" "}
+                                            {item.firstName}{" "}
+                                            {item.middleName}
+                                        </td>
+
+
+                                        <td>
+                                            {item.ownerType ||
+                                                "—"}
+                                        </td>
+
+
+                                        <td>
+                                            {item.phone ||
+                                                "—"}
+                                        </td>
+
+
+                                        <td>
+
+                                            <div className="table-actions">
+
+                                                <button
+                                                    className="button button-secondary"
+                                                    onClick={() =>
+                                                        openEdit(
+                                                            item
+                                                        )
+                                                    }
+                                                >
+                                                    Изменить
+                                                </button>
+
+
+                                                <button
+                                                    className="button button-danger"
+                                                    onClick={() =>
+                                                        deleteOwner(
+                                                            item.id
+                                                        )
+                                                    }
+                                                >
+                                                    Удалить
+                                                </button>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                )
+                            )}
+
+
+                            {!items.length && (
+
+                                <tr>
+
+                                    <td
+                                        colSpan={4}
+                                        className="table-message"
+                                    >
+                                        Нет данных
+                                    </td>
+
+                                </tr>
+
+                            )}
+
+                            </tbody>
+
+                        </table>
+
+
+                        {totalPages > 1 && (
+
+                            <div className="pagination">
+
+                                <button
+                                    className="button button-secondary"
+                                    onClick={
+                                        previousPage
+                                    }
+                                    disabled={
+                                        page === 0
+                                    }
+                                    aria-label="Предыдущая страница"
+                                >
+                                    ‹
+                                </button>
+
+
+                                {getPageNumbers().map(
+                                    (
+                                        pageNumber,
+                                        index
+                                    ) => {
+
+                                        if (
+                                            pageNumber ===
+                                            "ellipsis"
+                                        ) {
+                                            return (
+                                                <span
+                                                    key={`ellipsis-${index}`}
+                                                    className="pagination-ellipsis"
+                                                >
+                                                    …
+                                                </span>
+                                            );
+                                        }
+
+
+                                        return (
+                                            <button
+                                                key={
+                                                    pageNumber
+                                                }
+                                                className={
+                                                    pageNumber ===
+                                                    page
+                                                        ? "button button-primary pagination-page active"
+                                                        : "button button-secondary pagination-page"
+                                                }
+                                                onClick={() =>
+                                                    goToPage(
+                                                        pageNumber
+                                                    )
+                                                }
+                                                disabled={
+                                                    pageNumber ===
+                                                    page
+                                                }
+                                            >
+                                                {pageNumber + 1}
+                                            </button>
+                                        );
+                                    }
+                                )}
+
+
+                                <button
+                                    className="button button-secondary"
+                                    onClick={
+                                        nextPage
+                                    }
+                                    disabled={
+                                        page >=
+                                        totalPages - 1
+                                    }
+                                    aria-label="Следующая страница"
+                                >
+                                    ›
+                                </button>
+
+                            </div>
+
+                        )}
+
+                    </>
+
+                )}
+
+            </div>
+
+
+            {modalOpen && (
+
+                <div className="modal-backdrop">
+
+                    <div className="modal-card">
+
+                        <div className="modal-header">
+
+                            <h2>
+                                {editingItem
+                                    ? "Редактирование владельца"
+                                    : "Добавление владельца"}
+                            </h2>
+
+
+                            <button
+                                className="close-button"
+                                onClick={
+                                    closeModal
+                                }
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+                        <div className="form-grid">
+
+                            <label>
+
+                                Фамилия
+
+                                <input
+                                    value={lastName}
+                                    onChange={(e) =>
+                                        setLastName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+
+                                Имя
+
+                                <input
+                                    value={firstName}
+                                    onChange={(e) =>
+                                        setFirstName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+
+                                Отчество
+
+                                <input
+                                    value={middleName}
+                                    onChange={(e) =>
+                                        setMiddleName(
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                            </label>
+
+
+                            <label>
+
+                                Тип владельца
+
+                                <select
+                                    value={
+                                        ownerTypeId
+                                    }
+                                    onChange={(e) =>
+                                        setOwnerTypeId(
+                                            Number(
+                                                e.target.value
+                                            )
+                                        )
+                                    }
+                                >
+
+                                    <option value={0}>
+                                        Выберите тип
+                                    </option>
+
+
+                                    {ownerTypes.map(
+                                        (type) => (
+
+                                            <option
+                                                key={
+                                                    type.id
+                                                }
+                                                value={
+                                                    type.id
+                                                }
+                                            >
+                                                {type.name}
+                                            </option>
+
+                                        )
+                                    )}
+
+                                </select>
+
+                            </label>
+
+
+                            <label>
+
+                                Телефон
+
+                                <input
+                                    value={phone}
+                                    onChange={(e) =>
+                                        setPhone(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="+79493716918"
+                                />
+
+                            </label>
+
+                        </div>
+
+
+                        <div className="modal-footer">
+
+                            <button
+                                className="button button-secondary"
+                                onClick={
+                                    closeModal
+                                }
+                            >
+                                Отмена
+                            </button>
+
+
+                            <button
+                                className="button button-primary"
+                                onClick={
+                                    saveOwner
+                                }
+                            >
+                                Сохранить
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            )}
+
+        </section>
+    );
 }

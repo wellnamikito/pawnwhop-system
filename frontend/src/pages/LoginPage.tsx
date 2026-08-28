@@ -1,69 +1,68 @@
-import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
+  const navigate = useNavigate();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
     setSubmitting(true);
+
     try {
       await login(username, password);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Неверный логин или пароль");
+      navigate("/");
+    } catch {
+      setError("Не удалось войти. Проверьте логин, пароль и доступность сервера.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="login-screen">
-      <div className="login-card">
-        <div className="login-mark">
-          <span className="mark" />
-          <span>Реестр ломбардов</span>
-        </div>
-        <form onSubmit={onSubmit}>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>Логин</label>
+      <main className="login-page">
+        <form className="login-card" onSubmit={handleSubmit}>
+          <h1>Реестр ломбардов</h1>
+          <p>Введите учётные данные PostgreSQL.</p>
+
+          <label>
+            Логин
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-              required
-              style={{ width: "100%" }}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                required
             />
-          </div>
-          <div className="field" style={{ marginBottom: 6 }}>
-            <label>Пароль</label>
+          </label>
+
+          <label>
+            Пароль
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{ width: "100%" }}
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
             />
-          </div>
-          {error && <div className="error-text">{error}</div>}
-          <button className="btn btn-primary" type="submit" disabled={submitting} style={{ width: "100%", marginTop: 16, justifyContent: "center" }}>
-            {submitting ? "Вход..." : "Войти"}
+          </label>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <button className="button button-primary" disabled={submitting}>
+            {submitting ? "Вход…" : "Войти"}
           </button>
         </form>
-        <div className="helper-text" style={{ marginTop: 16 }}>
-          Аутентификация выполняется на сервере (Spring Boot, POST /auth/login).
-          Интерфейс один для всех ролей — доступные разделы зависят от роли,
-          назначенной администратором.
-        </div>
-      </div>
-    </div>
+      </main>
   );
 }
