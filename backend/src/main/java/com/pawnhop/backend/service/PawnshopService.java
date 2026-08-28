@@ -11,7 +11,7 @@ public interface PawnshopService {
 
     List<PawnshopResponseDto> getAllPawnshops();
 
-    Page<PawnshopResponseDto> getPawnshopsPage(Pageable pageable);
+    Page<PawnshopResponseDto> getPawnshopsPage(String search, Pageable pageable);
 
     PawnshopResponseDto createPawnshop(PawnshopRequestDto dto);
 

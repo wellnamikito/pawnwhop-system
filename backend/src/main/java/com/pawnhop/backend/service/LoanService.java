@@ -11,7 +11,7 @@ public interface LoanService {
 
     List<LoanResponseDto> getAllLoans();
 
-    Page<LoanResponseDto> getLoansPage(Pageable pageable);
+    Page<LoanResponseDto> getLoansPage(String search, Pageable pageable);
 
     LoanResponseDto createLoan(LoanRequestDto dto);
 

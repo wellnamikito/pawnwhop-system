@@ -31,10 +31,11 @@ public class LoanController {
     // GET /api/clients/{id}
     @GetMapping("/page")
     public Page<LoanResponseDto> getLoanById(
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 50, sort = "loanId")
             Pageable pageable){
 
-        return  loanService.getLoansPage(pageable);
+        return  loanService.getLoansPage(search,pageable);
     }
 
     // POST /api/loans/{id}

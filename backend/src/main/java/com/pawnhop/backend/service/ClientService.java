@@ -11,7 +11,7 @@ public interface ClientService {
 
     List<ClientResponseDto> getAllClients();
 
-    Page<ClientResponseDto> getClientsPage(Pageable pageable);
+    Page<ClientResponseDto> getClientsPage(String search, Pageable pageable);
 
     ClientResponseDto createClient(ClientRequestDto dto);
 

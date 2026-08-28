@@ -12,7 +12,7 @@ public interface OwnerService {
 
     List<OwnerResponseDto> getAllOwners();
 
-    Page<OwnerResponseDto> getOwnersPage(Pageable pageable);
+    Page<OwnerResponseDto> getOwnersPage( String search, Pageable pageable);
 
     OwnerResponseDto createOwner(OwnerRequestDto dto);
 

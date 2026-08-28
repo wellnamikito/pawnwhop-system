@@ -36,9 +36,14 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OwnerResponseDto> getOwnersPage(Pageable pageable){
+    public Page<OwnerResponseDto> getOwnersPage(String search, Pageable pageable){
 
-        return ownerRepo.findAll(pageable)
+        if(search == null || search.isBlank()){
+            return ownerRepo.findAll(pageable)
+                    .map(this::mapPoResponse);
+        }
+
+        return ownerRepo.search(search.trim(), pageable)
                 .map(this::mapPoResponse);
     }
 
@@ -49,7 +54,7 @@ public class OwnerServiceImpl implements OwnerService {
         OwnerType ownerType = ownerTypeRepo
                 .findById(dto.getOwnerTypeId())
                 .orElseThrow(()->
-                    new RuntimeException("Статус не найден")
+                    new RuntimeException("Тип владельца не найден: " + dto.getOwnerTypeId())
                 );
 
         Owner owner = new Owner();
@@ -78,7 +83,7 @@ public class OwnerServiceImpl implements OwnerService {
         OwnerType ownerType = ownerTypeRepo
                 .findById(dto.getOwnerTypeId())
                 .orElseThrow(()->
-                        new RuntimeException("Статус не найден")
+                        new RuntimeException("Тип владельца не найден: " + dto.getOwnerTypeId())
                 );
 
         owner.setLastName(dto.getLastName());

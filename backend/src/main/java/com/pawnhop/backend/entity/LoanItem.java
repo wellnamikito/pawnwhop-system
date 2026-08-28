@@ -37,7 +37,7 @@ public class LoanItem {
     // amount_domain: NUMERIC(10,2), > 0
     @JdbcTypeCode(SqlTypes.NUMERIC)
     @DecimalMin(value = "0.0", inclusive = false)
-    @Digits(integer = 0, fraction = 2)
+    @Digits(integer = 8, fraction = 2)
     @Column(name = "item_value", columnDefinition = "amount_domain")
     private BigDecimal itemValue;
 }

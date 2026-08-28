@@ -29,11 +29,12 @@ public class ClientController {
     // GET /api/clients/page
     @GetMapping("/page")
     public Page<ClientResponseDto> getClientById(
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 50, sort = "clientId")
             Pageable pageable
     ){
 
-        return clientService.getClientsPage(pageable);
+        return clientService.getClientsPage(search, pageable);
     }
 
     // POST /api/clients

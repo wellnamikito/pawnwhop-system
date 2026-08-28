@@ -39,9 +39,14 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<LoanResponseDto> getLoansPage(Pageable pageable){
+    public Page<LoanResponseDto> getLoansPage(String search, Pageable pageable){
 
-        return loanRepo.findAll(pageable)
+        if(search == null || search.isBlank()){
+            return loanRepo.findAll(pageable)
+                    .map(this::mapToResponse);
+        }
+
+        return loanRepo.search(search, pageable)
                 .map(this::mapToResponse);
     }
 
@@ -68,7 +73,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setIssueDate(dto.getIssueDate());
         loan.setReturnDate(dto.getReturnDate());
         loan.setPenaltyPercent(dto.getPenaltyPercent());
-        loan.setIssueDate(dto.getIssueDate());
+        loan.setIsReturned(dto.getIsReturned());
 
         Loan savedLoan = loanRepo.save(loan);
 
@@ -102,7 +107,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setIssueDate(dto.getIssueDate());
         loan.setReturnDate(dto.getReturnDate());
         loan.setPenaltyPercent(dto.getPenaltyPercent());
-        loan.setIssueDate(dto.getIssueDate());
+        loan.setIsReturned(dto.getIsReturned());
 
         return mapToResponse(loan);
     }

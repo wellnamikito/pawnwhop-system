@@ -35,10 +35,15 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ClientResponseDto> getClientsPage(Pageable pageable){
+    public Page<ClientResponseDto> getClientsPage(String search, Pageable pageable){
 
-       return clientRepo.findAll(pageable)
-               .map(this::mapToResponse);
+       if(search == null || search.isBlank()){
+           return clientRepo.findAll(pageable)
+                   .map(this::mapToResponse);
+       }
+
+        return clientRepo.search(search.trim(),pageable)
+                .map(this::mapToResponse);
     }
 
     @Override

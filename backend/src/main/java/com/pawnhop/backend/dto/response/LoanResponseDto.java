@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Setter
 public class LoanResponseDto {
 
-    private Integer Loanid;
+    private Integer loanId;
 
     private String pawnshop;
 

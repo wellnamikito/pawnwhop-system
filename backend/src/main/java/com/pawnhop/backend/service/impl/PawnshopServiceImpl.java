@@ -28,9 +28,9 @@ public class PawnshopServiceImpl implements PawnshopService {
 
     private final OwnershipTypeRepo ownershipTypeRepo;
 
-    private OwnerRepo ownerRepo;
+    private final OwnerRepo ownerRepo;
 
-    private DistrictRepo districtRepo;
+    private final DistrictRepo districtRepo;
 
     @Override
     @Transactional(readOnly = true)
@@ -44,9 +44,14 @@ public class PawnshopServiceImpl implements PawnshopService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PawnshopResponseDto> getPawnshopsPage(Pageable pageable){
+    public Page<PawnshopResponseDto> getPawnshopsPage(String search, Pageable pageable){
 
-        return pawnshopRepo.findAll(pageable)
+        if (search == null || search.isBlank()) {
+            return pawnshopRepo.findAll(pageable)
+                    .map(this::mapToResponse);
+        }
+
+        return pawnshopRepo.search(search.trim(), pageable)
                 .map(this::mapToResponse);
     }
 
@@ -63,13 +68,13 @@ public class PawnshopServiceImpl implements PawnshopService {
         Owner owner = ownerRepo
                 .findById(dto.getOwnerId())
                 .orElseThrow(() ->
-                        new RuntimeException("Тип собственности не найден")
+                        new RuntimeException("Владелец не найден")
                 );
 
         District district = districtRepo
                 .findById(dto.getDistrictId())
                 .orElseThrow(() ->
-                        new RuntimeException("Тип собственности не найден")
+                        new RuntimeException("Район не найден")
                 );
 
         Pawnshop pawnshop = new Pawnshop();
@@ -107,13 +112,13 @@ public class PawnshopServiceImpl implements PawnshopService {
         Owner owner = ownerRepo
                 .findById(dto.getOwnerId())
                 .orElseThrow(() ->
-                        new RuntimeException("Тип собственности не найден")
+                        new RuntimeException("Владелец не найден")
                 );
 
         District district = districtRepo
                 .findById(dto.getDistrictId())
                 .orElseThrow(() ->
-                        new RuntimeException("Тип собственности не найден")
+                        new RuntimeException("Район не найден")
                 );
 
         pawnshop.setName(dto.getName());

@@ -30,11 +30,12 @@ public class PawnshopController {
     // GET /api/pawnshops/page
     @GetMapping("/page")
     public Page<PawnshopResponseDto> getPawnshopsById(
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 50, sort = "pawnshopId")
             Pageable pageable
     ){
 
-        return pawnshopService.getPawnshopsPage(pageable);
+        return pawnshopService.getPawnshopsPage(search, pageable);
     }
 
     // POST /api/pawnshops

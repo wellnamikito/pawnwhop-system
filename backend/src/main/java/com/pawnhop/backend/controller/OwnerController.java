@@ -29,11 +29,12 @@ public class OwnerController {
     // GET /api/owners/page
     @GetMapping("/page")
     public Page<OwnerResponseDto> getOwnerById(
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 50, sort = "ownerId")
             Pageable pageable
     ){
 
-        return ownerService.getOwnersPage(pageable);
+        return ownerService.getOwnersPage(search, pageable);
     }
 
     // POST /api/owners
