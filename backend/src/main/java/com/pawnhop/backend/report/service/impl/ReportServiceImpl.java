@@ -4,6 +4,8 @@ import com.pawnhop.backend.report.dto.*;
 import com.pawnhop.backend.report.repository.ReportRepo;
 import com.pawnhop.backend.report.service.ReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,58 +20,81 @@ public class ReportServiceImpl implements ReportService {
 
 
     @Override
-    public List<LoansByPawnshopReportDto> getFindLoansByPawnshop(Integer pawnshopId) {
-        return reportRepo.findLoansByPawnshop(pawnshopId);
+    public Page<LoansByPawnshopReportDto> getFindLoansByPawnshop(
+            Integer pawnshopId,
+            Pageable pageable) {
+        return reportRepo.findLoansByPawnshop(pawnshopId, pageable);
     }
 
     @Override
-    public List<LoanItemsByTypeReportDto> getFindLoanItemsByType(Integer itemTypeId) {
-        return reportRepo.findLoanItemsByType(itemTypeId);
+    public Page<LoanItemsByTypeReportDto> getFindLoanItemsByType(
+            Integer itemTypeId,
+            Pageable pageable) {
+        return reportRepo.findLoanItemsByType(itemTypeId, pageable);
     }
 
     @Override
-    public List<LoansByPeriodReportDto> getFindLoansByPeriod(LocalDate startDate, LocalDate endDate) {
-        return reportRepo.findLoansByPeriod(startDate, endDate);
+    public Page<LoansByPeriodReportDto> getFindLoansByPeriod(
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+        return reportRepo.findLoansByPeriod(startDate, endDate,pageable);
     }
 
     @Override
-    public List<OverdueLoanReportDto> getFindOverdueLoans(LocalDate reportDate) {
-        return reportRepo.findOverdueLoans(reportDate);
+    public Page<OverdueLoanReportDto> getFindOverdueLoans(
+            LocalDate reportDate,
+            Pageable pageable) {
+        return reportRepo.findOverdueLoans(reportDate,  pageable);
     }
 
     @Override
-    public List<PawnshopFullReportDto> getFindAllPawnshopsReport() {
-        return reportRepo.findAllPawnshopsReport();
+    public Page<PawnshopFullReportDto> getFindAllPawnshopsReport(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllPawnshopsReport(pageable);
     }
 
     @Override
-    public List<AllLoansReportDto> getFindAllLoansReport() {
-        return reportRepo.findAllLoansReport();
+    public Page<AllLoansReportDto> getFindAllLoansReport(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllLoansReport(pageable);
     }
 
     @Override
-    public List<LoanItemFullReportDto> getFindAllLoanItemsReport() {
-        return reportRepo.findAllLoanItemsReport();
+    public Page<LoanItemFullReportDto> getFindAllLoanItemsReport(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllLoanItemsReport(pageable);
     }
 
     @Override
-    public List<PawnshopWithLoansReportDto> getFindAllPawnshopsWithLoans() {
-        return reportRepo.findAllPawnshopsWithLoans();
+    public Page<PawnshopWithLoansReportDto> getFindAllPawnshopsWithLoans(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllPawnshopsWithLoans(pageable);
     }
 
     @Override
-    public List<ClientWithLoansReportDto> getFindAllClientsWithLoans() {
-        return reportRepo.findAllClientsWithLoans();
+    public Page<ClientWithLoansReportDto> getFindAllClientsWithLoans(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllClientsWithLoans(pageable);
     }
 
     @Override
-    public List<ClientWithoutLoansReportDto> getFindAllClientsWithoutLoans() {
-        return reportRepo.findAllClientsWithoutLoans();
+    public Page<ClientWithoutLoansReportDto> getFindAllClientsWithoutLoans(
+            Pageable pageable
+    ) {
+        return reportRepo.findAllClientsWithoutLoans(pageable);
     }
 
     @Override
-    public List<PawnshopLoanCountReportDto> getCountLoansByPawnshop() {
-        return reportRepo.countLoansByPawnshop();
+    public Page<PawnshopLoanCountReportDto> getCountLoansByPawnshop(
+            Pageable pageable
+    ) {
+        return reportRepo.countLoansByPawnshop(pageable);
     }
 
     @Override
@@ -78,8 +103,10 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public List<PawnshopAverageLoanReportDto> getLoanAverageByAddress(String addressMask) {
-        return reportRepo.getLoanAverageByAddress(addressMask);
+    public Page<PawnshopAverageLoanReportDto> getLoanAverageByAddress(
+            String addressMask,
+            Pageable pageable) {
+        return reportRepo.getLoanAverageByAddress(addressMask,pageable);
     }
 
     @Override
@@ -88,33 +115,45 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public List<ClientMultipleLoansReportDto> getFindClientWithMultipleLoans() {
-        return reportRepo.findClientWithMultipleLoans();
+    public Page<ClientMultipleLoansReportDto> getFindClientWithMultipleLoans(
+            Pageable pageable
+    ) {
+        return reportRepo.findClientWithMultipleLoans(pageable);
     }
 
     @Override
-    public List<PawnshopPledgeValueReportDto> getFindPawnshopsByDistrictWithMinPledgeValue(Integer districtId, BigDecimal minTotalValue) {
-        return reportRepo.findPawnshopsByDistrictWithMinPledgeValue(districtId, minTotalValue);
+    public Page<PawnshopPledgeValueReportDto> getFindPawnshopsByDistrictWithMinPledgeValue(
+            Integer districtId,
+            BigDecimal minTotalValue,
+            Pageable pageable) {
+        return reportRepo.findPawnshopsByDistrictWithMinPledgeValue(districtId, minTotalValue, pageable);
     }
 
     @Override
-    public List<PawnshopAboveAverageLoanReportDto> getFindPawnshopsWithAboveAverageLoanAmount() {
-        return reportRepo.findPawnshopsWithAboveAverageLoanAmount();
+    public Page<PawnshopAboveAverageLoanReportDto> getFindPawnshopsWithAboveAverageLoanAmount(
+            Pageable pageable
+    ) {
+        return reportRepo.findPawnshopsWithAboveAverageLoanAmount(pageable);
     }
 
     @Override
-    public List<ClientByPledgeTypeReportDto> getFindClientsByPledgeItemType(Integer itemTypeId) {
-        return reportRepo.findClientsByPledgeItemType(itemTypeId);
+    public Page<ClientByPledgeTypeReportDto> getFindClientsByPledgeItemType(
+            Integer itemTypeId,
+            Pageable pageable) {
+        return reportRepo.findClientsByPledgeItemType(itemTypeId,pageable);
     }
 
     @Override
-    public List<PawnshopWithoutPledgeTypeReportDto> getFindPawnshopsWithoutPledgeItemType(Integer itemTypeId) {
-        return reportRepo.findPawnshopsWithoutPledgeItemType(itemTypeId);
+    public Page<PawnshopWithoutPledgeTypeReportDto> getFindPawnshopsWithoutPledgeItemType(
+            Integer itemTypeId,
+            Pageable pageable) {
+        return reportRepo.findPawnshopsWithoutPledgeItemType(itemTypeId, pageable);
     }
 
     @Override
-    public List<LoanStatusReportDto> getFindLoanStatuses() {
-        return reportRepo.findLoanStatuses();
+    public Page<LoanStatusReportDto> getFindLoanStatuses(
+            Pageable pageable) {
+        return reportRepo.findLoanStatuses(pageable);
     }
 
     @Override
@@ -128,8 +167,10 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public List<ProblematicLoanReportDto> getFindProblematicLoans(BigDecimal largeAmountThreshold) {
-        return reportRepo.findProblematicLoans(largeAmountThreshold);
+    public Page<ProblematicLoanReportDto> getFindProblematicLoans(
+            BigDecimal largeAmountThreshold,
+            Pageable pageable) {
+        return reportRepo.findProblematicLoans(largeAmountThreshold, pageable);
     }
 
 

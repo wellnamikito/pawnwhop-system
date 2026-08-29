@@ -2,6 +2,8 @@ package com.pawnhop.backend.report.service;
 
 
 import com.pawnhop.backend.report.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,54 +11,56 @@ import java.util.List;
 
 public interface ReportService {
 
-    List<LoansByPawnshopReportDto> getFindLoansByPawnshop(Integer pawnshopId);
+    Page<LoansByPawnshopReportDto> getFindLoansByPawnshop(Integer pawnshopId, Pageable pageable);
 
-    List<LoanItemsByTypeReportDto> getFindLoanItemsByType(Integer itemTypeId);
+    Page<LoanItemsByTypeReportDto> getFindLoanItemsByType(Integer itemTypeId, Pageable pageable);
 
-    List<LoansByPeriodReportDto> getFindLoansByPeriod(LocalDate startDate, LocalDate endDate);
+    Page<LoansByPeriodReportDto> getFindLoansByPeriod(LocalDate startDate, LocalDate endDate, Pageable pageable);
 
-    List<OverdueLoanReportDto> getFindOverdueLoans(LocalDate reportDate);
+    Page<OverdueLoanReportDto> getFindOverdueLoans(LocalDate reportDate, Pageable pageable);
 
-    List<PawnshopFullReportDto> getFindAllPawnshopsReport();
+    Page<PawnshopFullReportDto> getFindAllPawnshopsReport(Pageable pageable);
 
-    List<AllLoansReportDto> getFindAllLoansReport();
+    Page<AllLoansReportDto> getFindAllLoansReport(Pageable pageable);
 
-    List<LoanItemFullReportDto> getFindAllLoanItemsReport();
+    Page<LoanItemFullReportDto> getFindAllLoanItemsReport(Pageable pageable);
 
-    List<PawnshopWithLoansReportDto> getFindAllPawnshopsWithLoans();
+    Page<PawnshopWithLoansReportDto> getFindAllPawnshopsWithLoans(Pageable pageable);
 
-    List<ClientWithLoansReportDto> getFindAllClientsWithLoans();
+    Page<ClientWithLoansReportDto> getFindAllClientsWithLoans(Pageable pageable);
 
-    List<ClientWithoutLoansReportDto> getFindAllClientsWithoutLoans();
+    Page<ClientWithoutLoansReportDto> getFindAllClientsWithoutLoans(Pageable pageable);
 
-    List<PawnshopLoanCountReportDto> getCountLoansByPawnshop();
+    Page<PawnshopLoanCountReportDto> getCountLoansByPawnshop(Pageable pageable);
 
     List<PawnshopLoanStatisticsReportDto> getPawnshopLoanStatistic(Integer pawnshopId);
 
-    List<PawnshopAverageLoanReportDto> getLoanAverageByAddress(String addressMask);
+    Page<PawnshopAverageLoanReportDto> getLoanAverageByAddress(String addressMask, Pageable pageable);
 
     List<ClientLoanStatisticsReportDto> getClientLoanStatistics(Integer clientId);
 
-    List<ClientMultipleLoansReportDto> getFindClientWithMultipleLoans();
+    Page<ClientMultipleLoansReportDto> getFindClientWithMultipleLoans(Pageable pageable);
 
-    List<PawnshopPledgeValueReportDto> getFindPawnshopsByDistrictWithMinPledgeValue(
+    Page<PawnshopPledgeValueReportDto> getFindPawnshopsByDistrictWithMinPledgeValue(
             Integer districtId,
-            BigDecimal minTotalValue
+            BigDecimal minTotalValue,
+            Pageable pageable
     );
 
-    List<PawnshopAboveAverageLoanReportDto> getFindPawnshopsWithAboveAverageLoanAmount();
+    Page<PawnshopAboveAverageLoanReportDto> getFindPawnshopsWithAboveAverageLoanAmount(Pageable pageable);
 
-    List<ClientByPledgeTypeReportDto> getFindClientsByPledgeItemType(Integer itemTypeId);
+    Page<ClientByPledgeTypeReportDto> getFindClientsByPledgeItemType(Integer itemTypeId, Pageable pageable);
 
-    List<PawnshopWithoutPledgeTypeReportDto> getFindPawnshopsWithoutPledgeItemType(Integer itemTypeId);
+    Page<PawnshopWithoutPledgeTypeReportDto> getFindPawnshopsWithoutPledgeItemType(Integer itemTypeId, Pageable pageable);
 
-    List<LoanStatusReportDto> getFindLoanStatuses();
+    Page<LoanStatusReportDto> getFindLoanStatuses(Pageable pageable);
 
     List<PawnshopLoanShareReportDto> getFindPawnshopLoanShare();
 
     List<PawnshopStatisticsReportDto> getFindPawnshopLoanStatistics();
 
-    List<ProblematicLoanReportDto> getFindProblematicLoans(
-         BigDecimal largeAmountThreshold
+    Page<ProblematicLoanReportDto> getFindProblematicLoans(
+         BigDecimal largeAmountThreshold,
+         Pageable pageable
     );
 }

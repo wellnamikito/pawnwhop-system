@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 public record ProblematicLoanReportDto(
 
-        Long loanId,
+        Integer loanId,
         String lastName,
         String phone,
         BigDecimal amount,

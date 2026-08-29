@@ -2,6 +2,8 @@ package com.pawnhop.backend.report.repository;
 
 import com.pawnhop.backend.entity.Loan;
 import com.pawnhop.backend.report.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,58 +17,76 @@ public interface ReportRepo extends JpaRepository<Loan, Integer> {
 
     @Query(value = """
             SELECT * FROM  get_loans_by_pawnshop(:pawnshopId)""", nativeQuery = true)
-    List<LoansByPawnshopReportDto> findLoansByPawnshop(
-            @Param("pawnshopId") Integer pawnshopId
+    Page<LoansByPawnshopReportDto> findLoansByPawnshop(
+            @Param("pawnshopId") Integer pawnshopId,
+            Pageable pageable
     );
 
     @Query(value = """
             SELECT * FROM get_items_by_type(:itemTypeId)""", nativeQuery = true)
-    List<LoanItemsByTypeReportDto> findLoanItemsByType(
-            @Param("itemTypeId") Integer itemTypeId
+    Page<LoanItemsByTypeReportDto> findLoanItemsByType(
+            @Param("itemTypeId") Integer itemTypeId,
+            Pageable pageable
     );
 
     @Query(value = """
             SELECT * FROM get_loans_by_period(:startDate, :endDate)
             """, nativeQuery = true)
-    List<LoansByPeriodReportDto> findLoansByPeriod(
+    Page<LoansByPeriodReportDto> findLoansByPeriod(
             @Param("startDate")LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
     );
 
     @Query(value = """
             SELECT * FROM get_overdue_loans(:reportDate)""", nativeQuery = true)
-    List<OverdueLoanReportDto> findOverdueLoans (
-            @Param("reportDate") LocalDate reportDate
+    Page<OverdueLoanReportDto> findOverdueLoans (
+            @Param("reportDate") LocalDate reportDate,
+            Pageable pageable
     );
 
     @Query(value = """
             SELECT * FROM vw_pawnshop_info""", nativeQuery = true)
-    List<PawnshopFullReportDto> findAllPawnshopsReport();
+    Page<PawnshopFullReportDto> findAllPawnshopsReport(
+            Pageable pageable
+    );
 
     @Query(value = """
             SELECT * FROM vw_loan_info""", nativeQuery = true)
-    List<AllLoansReportDto> findAllLoansReport();
+    Page<AllLoansReportDto> findAllLoansReport(
+            Pageable pageable
+    );
 
     @Query( value = """
             SELECT * FROM vw_loan_items_info""", nativeQuery = true)
-    List<LoanItemFullReportDto> findAllLoanItemsReport();
+    Page<LoanItemFullReportDto> findAllLoanItemsReport(
+            Pageable pageable
+    );
 
     @Query(value = """
             SELECT * FROM vw_pawnshops_with_loans""", nativeQuery = true)
-    List<PawnshopWithLoansReportDto> findAllPawnshopsWithLoans();
+    Page<PawnshopWithLoansReportDto> findAllPawnshopsWithLoans(
+            Pageable pageable
+    );
 
     @Query(value = """
             SELECT * FROM vw_clients_with_loans""", nativeQuery = true)
-    List<ClientWithLoansReportDto> findAllClientsWithLoans();
+    Page<ClientWithLoansReportDto> findAllClientsWithLoans(
+            Pageable pageable
+    );
 
     @Query(value = """
     SELECT * FROM vw_clients_without_loans;""", nativeQuery = true)
-    List<ClientWithoutLoansReportDto> findAllClientsWithoutLoans();
+    Page<ClientWithoutLoansReportDto> findAllClientsWithoutLoans(
+            Pageable pageable
+    );
 
     @Query( value = """
         SELECT * FROM vw_pawnshop_loan_count;
     """, nativeQuery = true)
-    List<PawnshopLoanCountReportDto> countLoansByPawnshop();
+    Page<PawnshopLoanCountReportDto> countLoansByPawnshop(
+            Pageable pageable
+    );
 
     @Query(value = """
         SELECT * FROM get_pawnshop_statistics(:pawnshopId)""", nativeQuery = true)
@@ -76,8 +96,9 @@ public interface ReportRepo extends JpaRepository<Loan, Integer> {
 
     @Query(value = """
         SELECT * FROM get_pawnshops_by_address(:addressMask)""", nativeQuery = true)
-    List<PawnshopAverageLoanReportDto> getLoanAverageByAddress(
-            @Param("addressMask") String addressMask
+    Page<PawnshopAverageLoanReportDto> getLoanAverageByAddress(
+            @Param("addressMask") String addressMask,
+            Pageable pageable
     );
 
     @Query(value = """
@@ -88,36 +109,45 @@ public interface ReportRepo extends JpaRepository<Loan, Integer> {
 
     @Query(value = """
         SELECT * FROM vw_pawnshop_loan_count;""", nativeQuery = true)
-    List<ClientMultipleLoansReportDto> findClientWithMultipleLoans();
+    Page<ClientMultipleLoansReportDto> findClientWithMultipleLoans(
+            Pageable pageable
+    );
 
     @Query(value = """
     SELECT * FROM get_district_pledge_value(:districtId, :minTotalValue)""", nativeQuery = true)
-    List<PawnshopPledgeValueReportDto> findPawnshopsByDistrictWithMinPledgeValue(
+    Page<PawnshopPledgeValueReportDto> findPawnshopsByDistrictWithMinPledgeValue(
             @Param("districtId") Integer districtId,
-            @Param("minTotalValue")BigDecimal minTotalValue
+            @Param("minTotalValue")BigDecimal minTotalValue,
+            Pageable pageable
     );
 
     @Query(value = """
     SELECT * FROM vw_pawnshop_above_average_loan_count""", nativeQuery = true)
-    List<PawnshopAboveAverageLoanReportDto> findPawnshopsWithAboveAverageLoanAmount();
+    Page<PawnshopAboveAverageLoanReportDto> findPawnshopsWithAboveAverageLoanAmount(
+            Pageable pageable
+    );
 
     @Query(value = """
     SELECT * FROM get_clients_by_item_type(:itemTypeId);
     """, nativeQuery = true)
-    List<ClientByPledgeTypeReportDto> findClientsByPledgeItemType(
-            @Param("itemTypeId") Integer itemTypeId
+    Page<ClientByPledgeTypeReportDto> findClientsByPledgeItemType(
+            @Param("itemTypeId") Integer itemTypeId,
+            Pageable pageable
     );
 
     @Query(value = """
-    SELECT * get_pawnshops_without_item_type(:itemTypeId);
+    SELECT * FROM get_pawnshops_without_item_type(:itemTypeId);
     """, nativeQuery = true)
-    List<PawnshopWithoutPledgeTypeReportDto> findPawnshopsWithoutPledgeItemType(
-            @Param("itemTypeId") Integer itemTypeId
+    Page<PawnshopWithoutPledgeTypeReportDto> findPawnshopsWithoutPledgeItemType(
+            @Param("itemTypeId") Integer itemTypeId,
+            Pageable pageable
     );
 
     @Query(value = """
         SELECT * FROM vw_loan_status""", nativeQuery = true)
-    List<LoanStatusReportDto> findLoanStatuses();
+    Page<LoanStatusReportDto> findLoanStatuses(
+            Pageable pageable
+    );
 
     @Query(value = """
     SELECT * FROM vw_pawnshop_total_share""", nativeQuery = true)
@@ -128,8 +158,9 @@ public interface ReportRepo extends JpaRepository<Loan, Integer> {
     List<PawnshopStatisticsReportDto> findPawnshopLoanStatistics();
 
     @Query(value = """
-    SELECT * get_large_or_overdue_loans(:largeAmountThreshold)""", nativeQuery = true)
-    List<ProblematicLoanReportDto> findProblematicLoans(
-            @Param("largeAmountThreshold") BigDecimal largeAmountThreshold
+    SELECT * FROM get_large_or_overdue_loans(:largeAmountThreshold)""", nativeQuery = true)
+    Page<ProblematicLoanReportDto> findProblematicLoans(
+            @Param("largeAmountThreshold") BigDecimal largeAmountThreshold,
+            Pageable pageable
     );
 }

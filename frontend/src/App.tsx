@@ -11,6 +11,7 @@ import ClientsPage from "@/pages/ClientsPage";
 import PawnshopsPage from "@/pages/PawnshopsPage"
 import OwnerPage from "@/pages/OwnersPage"
 import DictionariesPage from "@/pages/DictionariesPage"
+import ReportPage from "@/pages/ReportsPage"
 
 export default function App() {
     return (
@@ -84,7 +85,7 @@ export default function App() {
                             path="reports"
                             element={
                                 <RequirePermission resource="reports">
-                                    <PlaceholderPage title="Отчёты" />
+                                    <ReportPage />
                                 </RequirePermission>
                             }
                         />
