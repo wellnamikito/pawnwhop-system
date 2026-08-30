@@ -11,19 +11,18 @@ public class PostgreSQLAuthService {
     private final String url =
             "jdbc:postgresql://localhost:5433/pawnwhop";
 
-
     public String authenticate(
             String username,
             String password
-    ){
+    ) {
 
-        try(Connection connection =
-                    DriverManager.getConnection(
-                            url,
-                            username,
-                            password
-                    )
-        ){
+        try (Connection connection =
+                     DriverManager.getConnection(
+                             url,
+                             username,
+                             password
+                     )
+        ) {
 
             PreparedStatement statement =
                     connection.prepareStatement(
@@ -43,31 +42,40 @@ public class PostgreSQLAuthService {
                             """
                     );
 
+            ResultSet result = statement.executeQuery();
 
-            ResultSet result =
-                    statement.executeQuery();
+            if (result.next()) {
 
+                String postgresRole =
+                        result.getString("rolname");
 
-            if(result.next()){
+                return switch (postgresRole) {
 
-                return result.getString("rolname");
+                    case "admin_role" ->
+                            "ADMIN";
 
+                    case "operator_role" ->
+                            "OPERATOR";
+
+                    case "analyst_role" ->
+                            "ANALYST";
+
+                    default ->
+                            throw new BadCredentialsException(
+                                    "User has no valid role"
+                            );
+                };
             }
 
-
-            throw new RuntimeException(
-                    "User has no role"
+            throw new BadCredentialsException(
+                    "User has no valid role"
             );
 
-
-        } catch (SQLException e){
+        } catch (SQLException e) {
 
             throw new BadCredentialsException(
-
                     "Invalid username or password"
-
             );
         }
     }
-
 }

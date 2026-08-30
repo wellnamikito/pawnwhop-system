@@ -10,15 +10,38 @@ import type {
 
 import type { Dictionary } from "@/types/dictionary";
 
+import { useAuth } from "@/context/AuthContext";
+
+
 const PAGE_SIZE = 50;
 
+
 export default function ClientsPage() {
-    const [items, setItems] = useState<Client[]>([]);
+
+    const { can } = useAuth();
+
+    /*
+     * Колонка "Действия" отображается только тогда,
+     * когда текущий пользователь имеет хотя бы одно
+     * право на изменение или удаление клиентов.
+     *
+     * ADMIN    -> true
+     * OPERATOR -> true
+     * ANALYST  -> false
+     */
+    const canManageClients =
+        can("clients", "edit") ||
+        can("clients", "delete");
+
+
+    const [items, setItems] =
+        useState<Client[]>([]);
 
     const [socialStatuses, setSocialStatuses] =
         useState<Dictionary[]>([]);
 
-    const [page, setPage] = useState(0);
+    const [page, setPage] =
+        useState(0);
 
     const [totalElements, setTotalElements] =
         useState(0);
@@ -26,17 +49,22 @@ export default function ClientsPage() {
     const [totalPages, setTotalPages] =
         useState(0);
 
-    const [search, setSearch] = useState("");
+    const [search, setSearch] =
+        useState("");
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] =
+        useState(true);
 
-    const [error, setError] = useState("");
+    const [error, setError] =
+        useState("");
+
 
     const [modalOpen, setModalOpen] =
         useState(false);
 
     const [editingItem, setEditingItem] =
         useState<Client | null>(null);
+
 
     const [lastName, setLastName] =
         useState("");
@@ -71,10 +99,13 @@ export default function ClientsPage() {
         requestedPage: number,
         requestedSearch: string
     ) {
+
         setLoading(true);
         setError("");
 
+
         try {
+
             const result =
                 await clientsApi.getPage(
                     requestedPage,
@@ -82,32 +113,50 @@ export default function ClientsPage() {
                     requestedSearch.trim()
                 );
 
-            setItems(result.content);
 
-            setPage(result.number);
+            setItems(
+                result.content
+            );
+
+
+            setPage(
+                result.number
+            );
+
 
             setTotalElements(
                 result.totalElements
             );
 
+
             setTotalPages(
                 result.totalPages
             );
+
+
         } catch (e) {
+
             console.error(e);
+
 
             setError(
                 "Не удалось загрузить клиентов."
             );
+
 
             setItems([]);
 
             setTotalElements(0);
 
             setTotalPages(0);
+
+
         } finally {
+
             setLoading(false);
+
         }
+
     }
 
 
@@ -115,14 +164,24 @@ export default function ClientsPage() {
      * Загрузка справочников.
      */
     async function loadDictionaries() {
+
         try {
+
             const result =
                 await socialStatusApi.getAll();
 
-            setSocialStatuses(result);
+
+            setSocialStatuses(
+                result
+            );
+
+
         } catch (e) {
+
             console.error(e);
+
         }
+
     }
 
 
@@ -132,8 +191,11 @@ export default function ClientsPage() {
      * Всегда начинаем с page = 0.
      */
     useEffect(() => {
+
         void loadClients(0, "");
+
         void loadDictionaries();
+
     }, []);
 
 
@@ -144,22 +206,41 @@ export default function ClientsPage() {
      * 1. ждём 400 мс;
      * 2. сбрасываем pagination на первую страницу;
      * 3. отправляем новый запрос на backend.
-     *
-     * Важно: search.trim() используется только при запросе,
-     * поэтому пробелы в начале/конце не влияют на поиск.
      */
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            void loadClients(0, search);
-        }, 400);
+
+        const timeoutId =
+            setTimeout(() => {
+
+                void loadClients(
+                    0,
+                    search
+                );
+
+            }, 400);
+
 
         return () => {
+
             clearTimeout(timeoutId);
+
         };
+
     }, [search]);
 
 
+    /*
+     * Открытие формы создания клиента.
+     *
+     * Дополнительная проверка права.
+     */
     function openCreate() {
+
+        if (!can("clients", "create")) {
+            return;
+        }
+
+
         setEditingItem(null);
 
         setLastName("");
@@ -179,27 +260,46 @@ export default function ClientsPage() {
         setError("");
 
         setModalOpen(true);
+
     }
 
 
-    function openEdit(item: Client) {
+    /*
+     * Открытие формы редактирования клиента.
+     *
+     * Дополнительная проверка права.
+     */
+    function openEdit(
+        item: Client
+    ) {
+
+        if (!can("clients", "edit")) {
+            return;
+        }
+
+
         setEditingItem(item);
+
 
         setLastName(
             item.lastName
         );
 
+
         setFirstName(
             item.firstName
         );
+
 
         setMiddleName(
             item.middleName ?? ""
         );
 
+
         setBirthDate(
             item.birthDate ?? ""
         );
+
 
         const status =
             socialStatuses.find(
@@ -208,62 +308,108 @@ export default function ClientsPage() {
                     item.socialStatus
             );
 
+
         setSocialStatusId(
             status?.id ?? 0
         );
+
 
         setAddress(
             item.address ?? ""
         );
 
+
         setPhone(
             item.phone ?? ""
         );
 
+
         setError("");
 
         setModalOpen(true);
+
     }
 
 
     function closeModal() {
+
         setModalOpen(false);
 
         setEditingItem(null);
+
     }
 
 
+    /*
+     * Сохранение клиента.
+     *
+     * create используется только при создании.
+     * edit используется только при редактировании.
+     */
     async function saveClient() {
+
+        if (
+            editingItem &&
+            !can("clients", "edit")
+        ) {
+            return;
+        }
+
+
+        if (
+            !editingItem &&
+            !can("clients", "create")
+        ) {
+            return;
+        }
+
+
         if (!lastName.trim()) {
+
             setError(
                 "Введите фамилию."
             );
+
             return;
+
         }
 
+
         if (!firstName.trim()) {
+
             setError(
                 "Введите имя."
             );
+
             return;
+
         }
 
+
         if (!socialStatusId) {
+
             setError(
                 "Выберите социальный статус."
             );
+
             return;
+
         }
 
+
         if (!address.trim()) {
+
             setError(
                 "Введите адрес."
             );
+
             return;
+
         }
 
 
         const data: ClientRequest = {
+
             lastName:
                 lastName.trim(),
 
@@ -286,51 +432,77 @@ export default function ClientsPage() {
             phone:
                 phone.trim() ||
                 undefined,
+
         };
 
 
         try {
+
             setError("");
 
+
             if (editingItem) {
+
                 await clientsApi.update(
                     editingItem.clientId,
                     data
                 );
+
             } else {
+
                 await clientsApi.create(
                     data
                 );
+
             }
+
 
             closeModal();
 
+
             /*
-             * После сохранения остаёмся на той же странице
-             * и сохраняем текущий поиск.
+             * После сохранения остаёмся
+             * на той же странице и сохраняем поиск.
              */
             await loadClients(
                 page,
                 search
             );
 
+
         } catch (e) {
+
             console.error(e);
+
 
             setError(
                 "Ошибка сохранения клиента."
             );
+
         }
+
     }
 
 
+    /*
+     * Удаление клиента.
+     *
+     * Дополнительная проверка права.
+     */
     async function deleteClient(
         id: number
     ) {
+
+        if (!can("clients", "delete")) {
+            return;
+        }
+
+
         const confirmed =
             window.confirm(
                 "Удалить клиента?"
             );
+
 
         if (!confirmed) {
             return;
@@ -338,9 +510,13 @@ export default function ClientsPage() {
 
 
         try {
+
             setError("");
 
-            await clientsApi.remove(id);
+
+            await clientsApi.remove(
+                id
+            );
 
 
             /*
@@ -360,24 +536,28 @@ export default function ClientsPage() {
                 search
             );
 
+
         } catch (e) {
+
             console.error(e);
+
 
             setError(
                 "Ошибка удаления клиента."
             );
+
         }
+
     }
 
 
     /*
      * Переход на страницу.
-     *
-     * Текущий search сохраняется.
      */
     function goToPage(
         targetPage: number
     ) {
+
         if (
             targetPage < 0 ||
             targetPage >= totalPages ||
@@ -386,31 +566,44 @@ export default function ClientsPage() {
             return;
         }
 
+
         void loadClients(
             targetPage,
             search
         );
+
     }
 
 
     function previousPage() {
-        goToPage(page - 1);
+
+        goToPage(
+            page - 1
+        );
+
     }
 
 
     function nextPage() {
-        goToPage(page + 1);
+
+        goToPage(
+            page + 1
+        );
+
     }
 
 
     function getPageNumbers(): (
         number | "ellipsis"
     )[] {
+
         if (totalPages <= 7) {
+
             return Array.from(
                 { length: totalPages },
                 (_, index) => index
             );
+
         }
 
 
@@ -418,23 +611,31 @@ export default function ClientsPage() {
             number | "ellipsis"
         )[] = [];
 
+
         pages.push(0);
 
 
         if (page > 3) {
-            pages.push("ellipsis");
+
+            pages.push(
+                "ellipsis"
+            );
+
         }
 
 
-        const start = Math.max(
-            1,
-            page - 2
-        );
+        const start =
+            Math.max(
+                1,
+                page - 2
+            );
 
-        const end = Math.min(
-            totalPages - 2,
-            page + 2
-        );
+
+        const end =
+            Math.min(
+                totalPages - 2,
+                page + 2
+            );
 
 
         for (
@@ -442,14 +643,21 @@ export default function ClientsPage() {
             i <= end;
             i++
         ) {
+
             pages.push(i);
+
         }
 
 
         if (
-            page < totalPages - 4
+            page <
+            totalPages - 4
         ) {
-            pages.push("ellipsis");
+
+            pages.push(
+                "ellipsis"
+            );
+
         }
 
 
@@ -459,13 +667,17 @@ export default function ClientsPage() {
 
 
         return pages;
+
     }
 
 
     return (
+
         <section>
 
+
             <div className="page-header">
+
 
                 <div>
 
@@ -473,41 +685,68 @@ export default function ClientsPage() {
                         Клиенты
                     </h1>
 
+
                     <p className="page-description">
+
                         Всего записей:{" "}
+
                         {totalElements}
+
                     </p>
 
                 </div>
 
 
-                <button
-                    className="button button-primary"
-                    onClick={openCreate}
-                >
-                    Добавить
-                </button>
+                {can(
+                    "clients",
+                    "create"
+                ) && (
+
+                    <button
+
+                        className="button button-primary"
+
+                        onClick={
+                            openCreate
+                        }
+
+                    >
+
+                        Добавить
+
+                    </button>
+
+                )}
+
 
             </div>
 
 
             {error && (
+
                 <p className="form-error">
+
                     {error}
+
                 </p>
+
             )}
 
 
             <div className="filter-bar">
 
                 <input
+
                     placeholder="Поиск по клиентам"
+
                     value={search}
+
                     onChange={(e) =>
                         setSearch(
                             e.target.value
                         )
                     }
+
                 />
 
             </div>
@@ -515,17 +754,22 @@ export default function ClientsPage() {
 
             <div className="table-card">
 
+
                 {loading ? (
 
                     <p className="table-message">
+
                         Загрузка...
+
                     </p>
 
                 ) : (
 
                     <>
 
+
                         <table className="data-table">
+
 
                             <thead>
 
@@ -551,9 +795,14 @@ export default function ClientsPage() {
                                         Телефон
                                     </th>
 
-                                    <th>
-                                        Действия
-                                    </th>
+
+                                    {canManageClients && (
+
+                                        <th>
+                                            Действия
+                                        </th>
+
+                                    )}
 
                                 </tr>
 
@@ -561,6 +810,7 @@ export default function ClientsPage() {
 
 
                             <tbody>
+
 
                                 {items.map(
                                     (item) => (
@@ -571,63 +821,112 @@ export default function ClientsPage() {
                                             }
                                         >
 
+
                                             <td>
+
                                                 {item.lastName}{" "}
+
                                                 {item.firstName}{" "}
+
                                                 {item.middleName ||
                                                     ""}
+
                                             </td>
 
+
                                             <td>
+
                                                 {item.birthDate ||
                                                     "—"}
+
                                             </td>
 
+
                                             <td>
+
                                                 {item.socialStatus ||
                                                     "—"}
+
                                             </td>
 
+
                                             <td>
+
                                                 {item.address ||
                                                     "—"}
+
                                             </td>
 
+
                                             <td>
+
                                                 {item.phone ||
                                                     "—"}
-                                            </td>
-
-                                            <td>
-
-                                                <div className="table-actions">
-
-                                                    <button
-                                                        className="button button-secondary"
-                                                        onClick={() =>
-                                                            openEdit(
-                                                                item
-                                                            )
-                                                        }
-                                                    >
-                                                        Изменить
-                                                    </button>
-
-
-                                                    <button
-                                                        className="button button-danger"
-                                                        onClick={() =>
-                                                            deleteClient(
-                                                                item.clientId
-                                                            )
-                                                        }
-                                                    >
-                                                        Удалить
-                                                    </button>
-
-                                                </div>
 
                                             </td>
+
+
+                                            {canManageClients && (
+
+                                                <td>
+
+                                                    <div className="table-actions">
+
+
+                                                        {can(
+                                                            "clients",
+                                                            "edit"
+                                                        ) && (
+
+                                                            <button
+
+                                                                className="button button-secondary"
+
+                                                                onClick={() =>
+                                                                    openEdit(
+                                                                        item
+                                                                    )
+                                                                }
+
+                                                            >
+
+                                                                Изменить
+
+                                                            </button>
+
+                                                        )}
+
+
+                                                        {can(
+                                                            "clients",
+                                                            "delete"
+                                                        ) && (
+
+                                                            <button
+
+                                                                className="button button-danger"
+
+                                                                onClick={() =>
+                                                                    deleteClient(
+                                                                        item.clientId
+                                                                    )
+                                                                }
+
+                                                            >
+
+                                                                Удалить
+
+                                                            </button>
+
+                                                        )}
+
+
+                                                    </div>
+
+                                                </td>
+
+                                            )}
+
 
                                         </tr>
 
@@ -640,17 +939,25 @@ export default function ClientsPage() {
                                     <tr>
 
                                         <td
-                                            colSpan={6}
+                                            colSpan={
+                                                canManageClients
+                                                    ? 6
+                                                    : 5
+                                            }
                                             className="table-message"
                                         >
+
                                             Нет данных
+
                                         </td>
 
                                     </tr>
 
                                 )}
 
+
                             </tbody>
+
 
                         </table>
 
@@ -659,17 +966,25 @@ export default function ClientsPage() {
 
                             <div className="pagination">
 
+
                                 <button
+
                                     className="button button-secondary"
+
                                     onClick={
                                         previousPage
                                     }
+
                                     disabled={
                                         page === 0
                                     }
+
                                     aria-label="Предыдущая страница"
+
                                 >
+
                                     ‹
+
                                 </button>
 
 
@@ -679,66 +994,101 @@ export default function ClientsPage() {
                                         index
                                     ) => {
 
+
                                         if (
                                             pageNumber ===
                                             "ellipsis"
                                         ) {
+
                                             return (
+
                                                 <span
-                                                    key={`ellipsis-${index}`}
+
+                                                    key={
+                                                        `ellipsis-${index}`
+                                                    }
+
                                                     className="pagination-ellipsis"
+
                                                 >
+
                                                     …
+
                                                 </span>
+
                                             );
+
                                         }
 
 
                                         return (
+
                                             <button
+
                                                 key={
                                                     pageNumber
                                                 }
+
                                                 className={
+
                                                     pageNumber ===
                                                     page
+
                                                         ? "button button-primary pagination-page active"
+
                                                         : "button button-secondary pagination-page"
+
                                                 }
+
                                                 onClick={() =>
                                                     goToPage(
                                                         pageNumber
                                                     )
                                                 }
+
                                                 disabled={
                                                     pageNumber ===
                                                     page
                                                 }
+
                                             >
+
                                                 {pageNumber + 1}
+
                                             </button>
+
                                         );
+
                                     }
                                 )}
 
 
                                 <button
+
                                     className="button button-secondary"
+
                                     onClick={
                                         nextPage
                                     }
+
                                     disabled={
                                         page >=
                                         totalPages - 1
                                     }
+
                                     aria-label="Следующая страница"
+
                                 >
+
                                     ›
+
                                 </button>
+
 
                             </div>
 
                         )}
+
 
                     </>
 
@@ -751,99 +1101,143 @@ export default function ClientsPage() {
 
                 <div className="modal-backdrop">
 
+
                     <div className="modal-card">
+
 
                         <div className="modal-header">
 
+
                             <h2>
+
                                 {editingItem
+
                                     ? "Редактирование клиента"
-                                    : "Добавление клиента"}
+
+                                    : "Добавление клиента"
+
+                                }
+
                             </h2>
 
 
                             <button
+
                                 className="close-button"
+
                                 onClick={
                                     closeModal
                                 }
+
                             >
+
                                 ×
+
                             </button>
+
 
                         </div>
 
 
                         <div className="form-grid">
 
+
                             <label>
+
                                 Фамилия
 
                                 <input
-                                    value={lastName}
+
+                                    value={
+                                        lastName
+                                    }
+
                                     onChange={(e) =>
                                         setLastName(
                                             e.target.value
                                         )
                                     }
+
                                 />
 
                             </label>
 
 
                             <label>
+
                                 Имя
 
                                 <input
-                                    value={firstName}
+
+                                    value={
+                                        firstName
+                                    }
+
                                     onChange={(e) =>
                                         setFirstName(
                                             e.target.value
                                         )
                                     }
+
                                 />
 
                             </label>
 
 
                             <label>
+
                                 Отчество
 
                                 <input
-                                    value={middleName}
+
+                                    value={
+                                        middleName
+                                    }
+
                                     onChange={(e) =>
                                         setMiddleName(
                                             e.target.value
                                         )
                                     }
+
                                 />
 
                             </label>
 
 
                             <label>
+
                                 Дата рождения
 
                                 <input
+
                                     type="date"
-                                    value={birthDate}
+
+                                    value={
+                                        birthDate
+                                    }
+
                                     onChange={(e) =>
                                         setBirthDate(
                                             e.target.value
                                         )
                                     }
+
                                 />
 
                             </label>
 
 
                             <label>
+
                                 Социальный статус
 
                                 <select
+
                                     value={
                                         socialStatusId
                                     }
+
                                     onChange={(e) =>
                                         setSocialStatusId(
                                             Number(
@@ -851,10 +1245,13 @@ export default function ClientsPage() {
                                             )
                                         )
                                     }
+
                                 >
 
                                     <option value={0}>
+
                                         Выберите статус
+
                                     </option>
 
 
@@ -862,14 +1259,19 @@ export default function ClientsPage() {
                                         (status) => (
 
                                             <option
+
                                                 key={
                                                     status.id
                                                 }
+
                                                 value={
                                                     status.id
                                                 }
+
                                             >
+
                                                 {status.name}
+
                                             </option>
 
                                         )
@@ -881,60 +1283,104 @@ export default function ClientsPage() {
 
 
                             <label>
+
                                 Адрес
 
                                 <input
-                                    value={address}
+
+                                    value={
+                                        address
+                                    }
+
                                     onChange={(e) =>
                                         setAddress(
                                             e.target.value
                                         )
                                     }
+
                                 />
 
                             </label>
 
 
                             <label>
+
                                 Телефон
 
                                 <input
-                                    value={phone}
+
+                                    value={
+                                        phone
+                                    }
+
                                     onChange={(e) =>
                                         setPhone(
                                             e.target.value
                                         )
                                     }
+
                                     placeholder="+79493716918"
+
                                 />
 
                             </label>
+
 
                         </div>
 
 
                         <div className="modal-footer">
 
+
                             <button
+
                                 className="button button-secondary"
+
                                 onClick={
                                     closeModal
                                 }
+
                             >
+
                                 Отмена
+
                             </button>
 
 
-                            <button
-                                className="button button-primary"
-                                onClick={
-                                    saveClient
-                                }
-                            >
-                                Сохранить
-                            </button>
+                            {(
+                                editingItem
+
+                                    ? can(
+                                        "clients",
+                                        "edit"
+                                    )
+
+                                    : can(
+                                        "clients",
+                                        "create"
+                                    )
+
+                            ) && (
+
+                                <button
+
+                                    className="button button-primary"
+
+                                    onClick={
+                                        saveClient
+                                    }
+
+                                >
+
+                                    Сохранить
+
+                                </button>
+
+                            )}
+
 
                         </div>
+
 
                     </div>
 
@@ -942,6 +1388,9 @@ export default function ClientsPage() {
 
             )}
 
+
         </section>
+
     );
+
 }

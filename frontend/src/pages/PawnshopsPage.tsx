@@ -7,6 +7,8 @@ import {
     ownershipTypeApi,
 } from "@/api/dictionary";
 
+import { useAuth } from "@/context/AuthContext";
+
 import type {
     Pawnshop,
     PawnshopRequest,
@@ -25,16 +27,56 @@ function workingHours(pawnshop: Pawnshop) {
     }
 
     return `${String(pawnshop.openingHour).padStart(
-        2,
-        "0"
-    )}:00 – ${String(pawnshop.closingHour).padStart(
-        2,
-        "0"
-    )}:00`;
+    2,
+    "0"
+)}:00 – ${String(pawnshop.closingHour).padStart(
+    2,
+    "0"
+)}:00`;
 }
 
 export default function PawnshopsPage() {
-    const [items, setItems] = useState<Pawnshop[]>([]);
+    const { can } = useAuth();
+
+    /*
+     * Права текущего пользователя.
+     *
+     * ADMIN:
+     *   create = true
+     *   edit   = true
+     *   delete = true
+     *
+     * OPERATOR:
+     *   create = true
+     *   edit   = true
+     *   delete = true
+     *
+     * ANALYST:
+     *   create = false
+     *   edit   = false
+     *   delete = false
+     */
+    const canCreate = can(
+        "pawnshops",
+        "create"
+    );
+
+    const canEdit = can(
+        "pawnshops",
+        "edit"
+    );
+
+    const canDelete = can(
+        "pawnshops",
+        "delete"
+    );
+
+    const hasActions =
+        canEdit || canDelete;
+
+    const [items, setItems] = useState<Pawnshop[]>(
+        []
+    );
 
     const [ownershipTypes, setOwnershipTypes] =
         useState<Dictionary[]>([]);
@@ -55,7 +97,8 @@ export default function PawnshopsPage() {
 
     const [search, setSearch] = useState("");
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] =
+        useState(true);
 
     const [error, setError] = useState("");
 
@@ -76,16 +119,17 @@ export default function PawnshopsPage() {
     const [districtId, setDistrictId] =
         useState<number>(0);
 
-    const [address, setAddress] = useState("");
+    const [address, setAddress] =
+        useState("");
 
-    const [phone, setPhone] = useState("");
+    const [phone, setPhone] =
+        useState("");
 
     const [openingHour, setOpeningHour] =
         useState<number | "">("");
 
     const [closingHour, setClosingHour] =
         useState<number | "">("");
-
 
     async function loadPawnshops(
         requestedPage = page,
@@ -130,7 +174,6 @@ export default function PawnshopsPage() {
         }
     }
 
-
     async function loadDictionaries() {
         try {
             const [
@@ -170,18 +213,19 @@ export default function PawnshopsPage() {
         }
     }
 
-
     useEffect(() => {
         void loadPawnshops(0);
         void loadDictionaries();
     }, []);
 
-
     /*
      * Поиск по всей базе через бэкенд.
-     * Debounce 400мс, чтобы не слать запрос на каждое нажатие клавиши.
-     * Пропускаем самый первый рендер — начальную загрузку
-     * уже делает эффект выше.
+     *
+     * Debounce 400мс, чтобы не отправлять
+     * запрос на каждое нажатие клавиши.
+     *
+     * Первый рендер пропускаем, потому что
+     * начальную загрузку делает эффект выше.
      */
     const isFirstRender = useRef(true);
 
@@ -195,11 +239,20 @@ export default function PawnshopsPage() {
             void loadPawnshops(0, search);
         }, 400);
 
-        return () => clearTimeout(timeoutId);
+        return () =>
+            clearTimeout(timeoutId);
     }, [search]);
 
-
     function openCreate() {
+        /*
+         * Дополнительная защита.
+         * Аналитик не должен иметь возможность
+         * открыть форму создания даже программно.
+         */
+        if (!canCreate) {
+            return;
+        }
+
         setEditingItem(null);
 
         setName("");
@@ -223,8 +276,14 @@ export default function PawnshopsPage() {
         setModalOpen(true);
     }
 
-
     function openEdit(item: Pawnshop) {
+        /*
+         * Дополнительная защита.
+         */
+        if (!canEdit) {
+            return;
+        }
+
         setEditingItem(item);
 
         setName(item.name);
@@ -240,7 +299,6 @@ export default function PawnshopsPage() {
             ownershipType?.id ?? 0
         );
 
-
         const owner =
             owners.find(
                 (itemOwner) =>
@@ -252,7 +310,6 @@ export default function PawnshopsPage() {
             owner?.id ?? 0
         );
 
-
         const district =
             districts.find(
                 (itemDistrict) =>
@@ -263,7 +320,6 @@ export default function PawnshopsPage() {
         setDistrictId(
             district?.id ?? 0
         );
-
 
         setAddress(
             item.address ?? ""
@@ -286,15 +342,30 @@ export default function PawnshopsPage() {
         setModalOpen(true);
     }
 
-
     function closeModal() {
         setModalOpen(false);
 
         setEditingItem(null);
     }
 
-
     async function savePawnshop() {
+        /*
+         * Дополнительная защита.
+         *
+         * Если редактируется существующий объект,
+         * требуется право edit.
+         *
+         * Если создаётся новый объект,
+         * требуется право create.
+         */
+        if (
+            editingItem
+                ? !canEdit
+                : !canCreate
+        ) {
+            return;
+        }
+
         if (!name.trim()) {
             setError(
                 "Введите название ломбарда."
@@ -330,7 +401,6 @@ export default function PawnshopsPage() {
             return;
         }
 
-
         const data: PawnshopRequest = {
             name: name.trim(),
 
@@ -357,7 +427,6 @@ export default function PawnshopsPage() {
                     : closingHour,
         };
 
-
         try {
             setError("");
 
@@ -375,7 +444,6 @@ export default function PawnshopsPage() {
             closeModal();
 
             await loadPawnshops(page);
-
         } catch (e) {
             console.error(e);
 
@@ -385,10 +453,16 @@ export default function PawnshopsPage() {
         }
     }
 
-
     async function deletePawnshop(
         id: number
     ) {
+        /*
+         * Аналитик не имеет права удаления.
+         */
+        if (!canDelete) {
+            return;
+        }
+
         const confirmed =
             window.confirm(
                 "Удалить ломбард?"
@@ -398,12 +472,10 @@ export default function PawnshopsPage() {
             return;
         }
 
-
         try {
             setError("");
 
             await pawnshopApi.remove(id);
-
 
             const targetPage =
                 page > 0 &&
@@ -411,11 +483,9 @@ export default function PawnshopsPage() {
                     ? page - 1
                     : page;
 
-
             await loadPawnshops(
                 targetPage
             );
-
         } catch (e) {
             console.error(e);
 
@@ -424,14 +494,6 @@ export default function PawnshopsPage() {
             );
         }
     }
-
-
-    /*
-     * Клиентской фильтрации больше нет: поиск выполняется на бэкенде
-     * (см. debounce-эффект выше), items уже содержит только то,
-     * что подходит под текущий search.
-     */
-
 
     function goToPage(
         targetPage: number
@@ -449,20 +511,17 @@ export default function PawnshopsPage() {
         );
     }
 
-
     function previousPage() {
         goToPage(page - 1);
     }
-
 
     function nextPage() {
         goToPage(page + 1);
     }
 
-
     function getPageNumbers(): (
         number | "ellipsis"
-        )[] {
+    )[] {
         if (totalPages <= 7) {
             return Array.from(
                 { length: totalPages },
@@ -472,7 +531,7 @@ export default function PawnshopsPage() {
 
         const pages: (
             number | "ellipsis"
-            )[] = [];
+        )[] = [];
 
         pages.push(0);
 
@@ -499,7 +558,8 @@ export default function PawnshopsPage() {
         }
 
         if (
-            page < totalPages - 4
+            page <
+            totalPages - 4
         ) {
             pages.push("ellipsis");
         }
@@ -511,14 +571,10 @@ export default function PawnshopsPage() {
         return pages;
     }
 
-
     return (
         <section>
-
             <div className="page-header">
-
                 <div>
-
                     <h1>
                         Ломбарды
                     </h1>
@@ -527,19 +583,19 @@ export default function PawnshopsPage() {
                         Всего записей:{" "}
                         {totalElements}
                     </p>
-
                 </div>
 
-
-                <button
-                    className="button button-primary"
-                    onClick={openCreate}
-                >
-                    Добавить
-                </button>
-
+                {canCreate && (
+                    <button
+                        className="button button-primary"
+                        onClick={
+                            openCreate
+                        }
+                    >
+                        Добавить
+                    </button>
+                )}
             </div>
-
 
             {error && (
                 <p className="form-error">
@@ -547,9 +603,7 @@ export default function PawnshopsPage() {
                 </p>
             )}
 
-
             <div className="filter-bar">
-
                 <input
                     placeholder="Поиск по ломбардам"
                     value={search}
@@ -559,189 +613,182 @@ export default function PawnshopsPage() {
                         )
                     }
                 />
-
             </div>
 
-
             <div className="table-card">
-
                 {loading ? (
-
                     <p className="table-message">
                         Загрузка...
                     </p>
-
                 ) : (
-
                     <>
-
                         <table className="data-table">
-
                             <thead>
+                                <tr>
+                                    <th>
+                                        Название
+                                    </th>
 
-                            <tr>
+                                    <th>
+                                        Форма собственности
+                                    </th>
 
-                                <th>
-                                    Название
-                                </th>
+                                    <th>
+                                        Владелец
+                                    </th>
 
-                                <th>
-                                    Форма собственности
-                                </th>
+                                    <th>
+                                        Район
+                                    </th>
 
-                                <th>
-                                    Владелец
-                                </th>
+                                    <th>
+                                        Адрес
+                                    </th>
 
-                                <th>
-                                    Район
-                                </th>
+                                    <th>
+                                        Часы работы
+                                    </th>
 
-                                <th>
-                                    Адрес
-                                </th>
+                                    <th>
+                                        Телефон
+                                    </th>
 
-                                <th>
-                                    Часы работы
-                                </th>
-
-                                <th>
-                                    Телефон
-                                </th>
-
-                                <th>
-                                    Действия
-                                </th>
-
-                            </tr>
-
+                                    {hasActions && (
+                                        <th>
+                                            Действия
+                                        </th>
+                                    )}
+                                </tr>
                             </thead>
 
-
                             <tbody>
+                                {items.map(
+                                    (item) => (
+                                        <tr
+                                            key={
+                                                item.id
+                                            }
+                                        >
+                                            <td>
+                                                {
+                                                    item.name
+                                                }
+                                            </td>
 
-                            {items.map(
-                                (item) => (
+                                            <td>
+                                                {
+                                                    item.ownershipType ||
+                                                    "—"
+                                                }
+                                            </td>
 
-                                    <tr
-                                        key={item.id}
-                                    >
+                                            <td>
+                                                {
+                                                    item.owner ||
+                                                    "—"
+                                                }
+                                            </td>
 
-                                        <td>
-                                            {item.name}
-                                        </td>
+                                            <td>
+                                                {
+                                                    item.district ||
+                                                    "—"
+                                                }
+                                            </td>
 
-                                        <td>
-                                            {item.ownershipType ||
-                                                "—"}
-                                        </td>
+                                            <td>
+                                                {
+                                                    item.address ||
+                                                    "—"
+                                                }
+                                            </td>
 
-                                        <td>
-                                            {item.owner ||
-                                                "—"}
-                                        </td>
+                                            <td>
+                                                {workingHours(
+                                                    item
+                                                )}
+                                            </td>
 
-                                        <td>
-                                            {item.district ||
-                                                "—"}
-                                        </td>
+                                            <td>
+                                                {
+                                                    item.phone ||
+                                                    "—"
+                                                }
+                                            </td>
 
-                                        <td>
-                                            {item.address ||
-                                                "—"}
-                                        </td>
+                                            {hasActions && (
+                                                <td>
+                                                    <div className="table-actions">
+                                                        {canEdit && (
+                                                            <button
+                                                                className="button button-secondary"
+                                                                onClick={() =>
+                                                                    openEdit(
+                                                                        item
+                                                                    )
+                                                                }
+                                                            >
+                                                                Изменить
+                                                            </button>
+                                                        )}
 
-                                        <td>
-                                            {workingHours(
-                                                item
+                                                        {canDelete && (
+                                                            <button
+                                                                className="button button-danger"
+                                                                onClick={() =>
+                                                                    deletePawnshop(
+                                                                        item.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Удалить
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             )}
+                                        </tr>
+                                    )
+                                )}
+
+                                {!items.length && (
+                                    <tr>
+                                        <td
+                                            colSpan={
+                                                hasActions
+                                                    ? 8
+                                                    : 7
+                                            }
+                                            className="table-message"
+                                        >
+                                            Нет данных
                                         </td>
-
-                                        <td>
-                                            {item.phone ||
-                                                "—"}
-                                        </td>
-
-                                        <td>
-
-                                            <div className="table-actions">
-
-                                                <button
-                                                    className="button button-secondary"
-                                                    onClick={() =>
-                                                        openEdit(
-                                                            item
-                                                        )
-                                                    }
-                                                >
-                                                    Изменить
-                                                </button>
-
-                                                <button
-                                                    className="button button-danger"
-                                                    onClick={() =>
-                                                        deletePawnshop(
-                                                            item.id
-                                                        )
-                                                    }
-                                                >
-                                                    Удалить
-                                                </button>
-
-                                            </div>
-
-                                        </td>
-
                                     </tr>
-
-                                )
-                            )}
-
-
-                            {!items.length && (
-
-                                <tr>
-
-                                    <td
-                                        colSpan={8}
-                                        className="table-message"
-                                    >
-                                        Нет данных
-                                    </td>
-
-                                </tr>
-
-                            )}
-
+                                )}
                             </tbody>
-
                         </table>
 
-
                         {totalPages > 1 && (
-
                             <div className="pagination">
-
                                 <button
                                     className="button button-secondary"
                                     onClick={
                                         previousPage
                                     }
                                     disabled={
-                                        page === 0
+                                        page ===
+                                        0
                                     }
                                     aria-label="Предыдущая страница"
                                 >
                                     ‹
                                 </button>
 
-
                                 {getPageNumbers().map(
                                     (
                                         pageNumber,
                                         index
                                     ) => {
-
                                         if (
                                             pageNumber ===
                                             "ellipsis"
@@ -751,15 +798,16 @@ export default function PawnshopsPage() {
                                                     key={`ellipsis-${index}`}
                                                     className="pagination-ellipsis"
                                                 >
-                          …
-                        </span>
+                                                    …
+                                                </span>
                                             );
                                         }
 
-
                                         return (
                                             <button
-                                                key={pageNumber}
+                                                key={
+                                                    pageNumber
+                                                }
                                                 className={
                                                     pageNumber ===
                                                     page
@@ -776,12 +824,14 @@ export default function PawnshopsPage() {
                                                     page
                                                 }
                                             >
-                                                {pageNumber + 1}
+                                                {
+                                                    pageNumber +
+                                                    1
+                                                }
                                             </button>
                                         );
                                     }
                                 )}
-
 
                                 <button
                                     className="button button-secondary"
@@ -790,38 +840,28 @@ export default function PawnshopsPage() {
                                     }
                                     disabled={
                                         page >=
-                                        totalPages - 1
+                                        totalPages -
+                                            1
                                     }
                                     aria-label="Следующая страница"
                                 >
                                     ›
                                 </button>
-
                             </div>
-
                         )}
-
                     </>
-
                 )}
-
             </div>
 
-
             {modalOpen && (
-
                 <div className="modal-backdrop">
-
                     <div className="modal-card">
-
                         <div className="modal-header">
-
                             <h2>
                                 {editingItem
                                     ? "Редактирование ломбарда"
                                     : "Добавление ломбарда"}
                             </h2>
-
 
                             <button
                                 className="close-button"
@@ -831,26 +871,26 @@ export default function PawnshopsPage() {
                             >
                                 ×
                             </button>
-
                         </div>
 
-
                         <div className="form-grid">
-
                             <label>
                                 Название
 
                                 <input
-                                    value={name}
-                                    onChange={(e) =>
+                                    value={
+                                        name
+                                    }
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setName(
-                                            e.target.value
+                                            e.target
+                                                .value
                                         )
                                     }
                                 />
-
                             </label>
-
 
                             <label>
                                 Форма собственности
@@ -859,139 +899,167 @@ export default function PawnshopsPage() {
                                     value={
                                         ownershipTypeId
                                     }
-                                    onChange={(e) =>
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setOwnershipTypeId(
                                             Number(
-                                                e.target.value
+                                                e
+                                                    .target
+                                                    .value
                                             )
                                         )
                                     }
                                 >
-
                                     <option value={0}>
                                         Выберите форму
                                     </option>
 
                                     {ownershipTypes.map(
-                                        (type) => (
-
+                                        (
+                                            type
+                                        ) => (
                                             <option
-                                                key={type.id}
-                                                value={type.id}
+                                                key={
+                                                    type.id
+                                                }
+                                                value={
+                                                    type.id
+                                                }
                                             >
-                                                {type.name}
+                                                {
+                                                    type.name
+                                                }
                                             </option>
-
                                         )
                                     )}
-
                                 </select>
-
                             </label>
-
 
                             <label>
                                 Владелец
 
                                 <select
-                                    value={ownerId}
-                                    onChange={(e) =>
+                                    value={
+                                        ownerId
+                                    }
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setOwnerId(
                                             Number(
-                                                e.target.value
+                                                e
+                                                    .target
+                                                    .value
                                             )
                                         )
                                     }
                                 >
-
                                     <option value={0}>
                                         Выберите владельца
                                     </option>
 
                                     {owners.map(
-                                        (owner) => (
-
+                                        (
+                                            owner
+                                        ) => (
                                             <option
-                                                key={owner.id}
-                                                value={owner.id}
+                                                key={
+                                                    owner.id
+                                                }
+                                                value={
+                                                    owner.id
+                                                }
                                             >
-                                                {owner.name}
+                                                {
+                                                    owner.name
+                                                }
                                             </option>
-
                                         )
                                     )}
-
                                 </select>
-
                             </label>
-
 
                             <label>
                                 Район
 
                                 <select
-                                    value={districtId}
-                                    onChange={(e) =>
+                                    value={
+                                        districtId
+                                    }
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setDistrictId(
                                             Number(
-                                                e.target.value
+                                                e
+                                                    .target
+                                                    .value
                                             )
                                         )
                                     }
                                 >
-
                                     <option value={0}>
                                         Выберите район
                                     </option>
 
                                     {districts.map(
-                                        (district) => (
-
+                                        (
+                                            district
+                                        ) => (
                                             <option
-                                                key={district.id}
-                                                value={district.id}
+                                                key={
+                                                    district.id
+                                                }
+                                                value={
+                                                    district.id
+                                                }
                                             >
-                                                {district.name}
+                                                {
+                                                    district.name
+                                                }
                                             </option>
-
                                         )
                                     )}
-
                                 </select>
-
                             </label>
-
 
                             <label>
                                 Адрес
 
                                 <input
-                                    value={address}
-                                    onChange={(e) =>
+                                    value={
+                                        address
+                                    }
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setAddress(
-                                            e.target.value
+                                            e.target
+                                                .value
                                         )
                                     }
                                 />
-
                             </label>
-
 
                             <label>
                                 Телефон
 
                                 <input
-                                    value={phone}
-                                    onChange={(e) =>
+                                    value={
+                                        phone
+                                    }
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setPhone(
-                                            e.target.value
+                                            e.target
+                                                .value
                                         )
                                     }
                                     placeholder="+79493716918"
                                 />
-
                             </label>
-
 
                             <label>
                                 Час открытия
@@ -1003,20 +1071,23 @@ export default function PawnshopsPage() {
                                     value={
                                         openingHour
                                     }
-                                    onChange={(e) =>
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setOpeningHour(
-                                            e.target.value ===
+                                            e.target
+                                                .value ===
                                             ""
                                                 ? ""
                                                 : Number(
-                                                    e.target.value
-                                                )
+                                                      e
+                                                          .target
+                                                          .value
+                                                  )
                                         )
                                     }
                                 />
-
                             </label>
-
 
                             <label>
                                 Час закрытия
@@ -1028,25 +1099,26 @@ export default function PawnshopsPage() {
                                     value={
                                         closingHour
                                     }
-                                    onChange={(e) =>
+                                    onChange={(
+                                        e
+                                    ) =>
                                         setClosingHour(
-                                            e.target.value ===
+                                            e.target
+                                                .value ===
                                             ""
                                                 ? ""
                                                 : Number(
-                                                    e.target.value
-                                                )
+                                                      e
+                                                          .target
+                                                          .value
+                                                  )
                                         )
                                     }
                                 />
-
                             </label>
-
                         </div>
 
-
                         <div className="modal-footer">
-
                             <button
                                 className="button button-secondary"
                                 onClick={
@@ -1056,7 +1128,6 @@ export default function PawnshopsPage() {
                                 Отмена
                             </button>
 
-
                             <button
                                 className="button button-primary"
                                 onClick={
@@ -1065,15 +1136,10 @@ export default function PawnshopsPage() {
                             >
                                 Сохранить
                             </button>
-
                         </div>
-
                     </div>
-
                 </div>
-
             )}
-
         </section>
     );
 }

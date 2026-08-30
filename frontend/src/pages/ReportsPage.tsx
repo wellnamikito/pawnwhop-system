@@ -92,6 +92,32 @@ interface ClientPage {
   size: number;
 }
 
+/*
+ * ---------------------------------------------------------
+ * КЛИЕНТЫ — РЕДАКТИРУЕМОЕ ПРЕДСТАВЛЕНИЕ
+ * (vw_client_edit / ClientEditViewDto)
+ * ---------------------------------------------------------
+ */
+
+interface ClientEditRow {
+  clientId: number;
+  lastName: string;
+  firstName: string;
+  middleName: string | null;
+  birthDate: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
+const CLIENT_EDIT_COLUMNS: Column[] = [
+  { key: "lastName", label: "Фамилия" },
+  { key: "firstName", label: "Имя" },
+  { key: "middleName", label: "Отчество" },
+  { key: "birthDate", label: "Дата рождения" },
+  { key: "address", label: "Адрес" },
+  { key: "phone", label: "Телефон" },
+];
+
 type OverviewReport =
     | {
   id: string;
@@ -1197,9 +1223,16 @@ const PARAM_REPORTS: ParamReport[] = [
 
 export default function ReportsPage() {
   const [mode, setMode] =
-      useState<"overview" | "params">(
+      useState<
+          | "overview"
+          | "params"
+          | "clientEditView"
+      >(
           "overview"
       );
+
+  const isClientEditMode =
+      mode === "clientEditView";
 
   const [
     activeOverviewId,
@@ -1320,6 +1353,25 @@ export default function ReportsPage() {
 
   const [error, setError] =
       useState("");
+
+  /*
+   * ---------------------------------------------------------
+   * РЕДАКТИРОВАНИЕ КЛИЕНТОВ (ClientEditView)
+   * ---------------------------------------------------------
+   */
+
+  const [
+    editingClientId,
+    setEditingClientId,
+  ] = useState<number | null>(null);
+
+  const [editDraft, setEditDraft] =
+      useState<Partial<ClientEditRow>>(
+          {}
+      );
+
+  const [savingClientId, setSavingClientId] =
+      useState<number | null>(null);
 
   /*
    * ---------------------------------------------------------
@@ -1663,6 +1715,169 @@ export default function ReportsPage() {
 
   /*
    * ---------------------------------------------------------
+   * ЗАГРУЗКА РЕДАКТИРУЕМОГО СПИСКА КЛИЕНТОВ
+   *
+   * GET /api/report/clients/edit-view
+   * ---------------------------------------------------------
+   */
+
+  async function loadClientEditView(
+      requestedPage: number
+  ) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response =
+          await api.get<
+              SpringPage<ClientEditRow>
+          >(
+              "/report/clients/edit-view",
+              {
+                params: {
+                  page: requestedPage,
+                  size: PAGE_SIZE,
+                },
+              }
+          );
+
+      const result = response.data;
+
+      setRows(result.content);
+      setPage(result.number);
+      setTotalElements(
+          result.totalElements
+      );
+      setTotalPages(
+          result.totalPages
+      );
+    } catch (e) {
+      console.error(e);
+
+      setError(
+          "Не удалось загрузить список клиентов."
+      );
+
+      setRows([]);
+      setTotalElements(0);
+      setTotalPages(0);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /*
+   * ---------------------------------------------------------
+   * РЕДАКТИРОВАНИЕ СТРОКИ КЛИЕНТА
+   * ---------------------------------------------------------
+   */
+
+  function startClientEdit(
+      row: ClientEditRow
+  ) {
+    setEditingClientId(row.clientId);
+
+    setEditDraft({
+      lastName: row.lastName ?? "",
+      firstName: row.firstName ?? "",
+      middleName: row.middleName ?? "",
+      birthDate: row.birthDate ?? "",
+      address: row.address ?? "",
+      phone: row.phone ?? "",
+    });
+
+    setError("");
+  }
+
+  function cancelClientEdit() {
+    setEditingClientId(null);
+    setEditDraft({});
+  }
+
+  function updateEditDraft(
+      field: keyof Omit<
+          ClientEditRow,
+          "clientId"
+      >,
+      value: string
+  ) {
+    setEditDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function saveClientEdit(
+      row: ClientEditRow
+  ) {
+    if (
+        !editDraft.lastName?.trim() ||
+        !editDraft.firstName?.trim()
+    ) {
+      setError(
+          "Заполните фамилию и имя клиента."
+      );
+
+      return;
+    }
+
+    setSavingClientId(row.clientId);
+    setError("");
+
+    const payload: ClientEditRow = {
+      clientId: row.clientId,
+      lastName:
+          editDraft.lastName!.trim(),
+      firstName:
+          editDraft.firstName!.trim(),
+      middleName:
+          editDraft.middleName?.trim()
+              ? editDraft.middleName.trim()
+              : null,
+      birthDate: editDraft.birthDate
+          ? editDraft.birthDate
+          : null,
+      address: editDraft.address?.trim()
+          ? editDraft.address.trim()
+          : null,
+      phone: editDraft.phone?.trim()
+          ? editDraft.phone.trim()
+          : null,
+    };
+
+    try {
+      await api.put(
+          "/report/clients/edit-view",
+          payload
+      );
+
+      setRows((current) =>
+          current.map((item) =>
+              item.clientId ===
+              row.clientId
+                  ? {
+                    ...item,
+                    ...payload,
+                  }
+                  : item
+          )
+      );
+
+      setEditingClientId(null);
+      setEditDraft({});
+    } catch (e) {
+      console.error(e);
+
+      setError(
+          "Не удалось сохранить изменения клиента."
+      );
+    } finally {
+      setSavingClientId(null);
+    }
+  }
+
+  /*
+   * ---------------------------------------------------------
    * НАЧАЛЬНАЯ ЗАГРУЗКА
    * ---------------------------------------------------------
    */
@@ -1751,6 +1966,26 @@ export default function ReportsPage() {
 
   /*
    * ---------------------------------------------------------
+   * ПЕРЕКЛЮЧЕНИЕ НА РЕДАКТИРОВАНИЕ КЛИЕНТОВ
+   * ---------------------------------------------------------
+   */
+
+  useEffect(() => {
+    if (mode !== "clientEditView") {
+      return;
+    }
+
+    setEditingClientId(null);
+    setEditDraft({});
+    setError("");
+
+    void loadClientEditView(0);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  /*
+   * ---------------------------------------------------------
    * ПАГИНАЦИЯ
    * ---------------------------------------------------------
    */
@@ -1771,10 +2006,14 @@ export default function ReportsPage() {
           activeReport as OverviewReport,
           targetPage
       );
-    } else {
+    } else if (mode === "params") {
       void runParamReport(
           activeReport as ParamReport,
           paramValues,
+          targetPage
+      );
+    } else {
+      void loadClientEditView(
           targetPage
       );
     }
@@ -1850,46 +2089,200 @@ export default function ReportsPage() {
    * ---------------------------------------------------------
    */
 
-  function exportToExcel() {
-    if (!rows.length) {
-      return;
-    }
+  const [exportLoading, setExportLoading] =
+      useState(false);
 
-    const exportRows =
-        rows.map((row) => {
-          const result: Record<
-              string,
-              any
-          > = {};
-
-          activeReport.columns.forEach(
-              (column) => {
-                result[column.label] =
-                    row[column.key];
+  /*
+   * Для экрана используется PAGE_SIZE = 50.
+   * Для Excel загружается весь результат текущего
+   * запроса: все страницы пагинируемого отчёта.
+   * Состояние rows при этом не изменяется.
+   */
+  async function getAllRowsForExport(): Promise<any[]> {
+    if (isClientEditMode) {
+      const firstResponse =
+          await api.get<SpringPage<ClientEditRow>>(
+              "/report/clients/edit-view",
+              {
+                params: {
+                  page: 0,
+                  size: PAGE_SIZE,
+                },
               }
           );
 
-          return result;
-        });
+      const firstPage = firstResponse.data;
+      const allRows = [
+        ...firstPage.content,
+      ];
 
-    const worksheet =
-        XLSX.utils.json_to_sheet(
-            exportRows
+      for (
+          let requestedPage = 1;
+          requestedPage < firstPage.totalPages;
+          requestedPage++
+      ) {
+        const response =
+            await api.get<SpringPage<ClientEditRow>>(
+                "/report/clients/edit-view",
+                {
+                  params: {
+                    page: requestedPage,
+                    size: PAGE_SIZE,
+                  },
+                }
+            );
+
+        allRows.push(
+            ...response.data.content
         );
+      }
 
-    const workbook =
-        XLSX.utils.book_new();
+      return allRows;
+    }
 
-    XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        "Результат запроса"
+    if (activeReport.paginated) {
+      if (mode === "overview") {
+        const firstPage =
+            await activeReport.fetchPage(
+                0,
+                PAGE_SIZE
+            );
+
+        const allRows = [
+          ...firstPage.content,
+        ];
+
+        for (
+            let requestedPage = 1;
+            requestedPage < firstPage.totalPages;
+            requestedPage++
+        ) {
+          const result =
+              await activeReport.fetchPage(
+                  requestedPage,
+                  PAGE_SIZE
+              );
+
+          allRows.push(
+              ...result.content
+          );
+        }
+
+        return allRows;
+      }
+
+      const firstPage =
+          await activeReport.fetchPage(
+              paramValues,
+              0,
+              PAGE_SIZE
+          );
+
+      const allRows = [
+        ...firstPage.content,
+      ];
+
+      for (
+          let requestedPage = 1;
+          requestedPage < firstPage.totalPages;
+          requestedPage++
+      ) {
+        const result =
+            await activeReport.fetchPage(
+                paramValues,
+                requestedPage,
+                PAGE_SIZE
+            );
+
+        allRows.push(
+            ...result.content
+        );
+      }
+
+      return allRows;
+    }
+
+    if (mode === "overview") {
+      return await activeReport.fetchList();
+    }
+
+    return await activeReport.fetchList(
+        paramValues
     );
+  }
 
-    XLSX.writeFile(
-        workbook,
-        `${activeReport.id}.xlsx`
-    );
+  async function exportToExcel() {
+    if (loading || exportLoading || !rows.length) {
+      return;
+    }
+
+    setExportLoading(true);
+    setError("");
+
+    try {
+      const exportRowsData =
+          await getAllRowsForExport();
+
+      if (!exportRowsData.length) {
+        setError(
+            "Нет данных для экспорта."
+        );
+        return;
+      }
+
+      const exportColumns =
+          isClientEditMode
+              ? CLIENT_EDIT_COLUMNS
+              : activeReport.columns;
+
+      const exportRows =
+          exportRowsData.map((row) => {
+            const result: Record<
+                string,
+                any
+            > = {};
+
+            exportColumns.forEach(
+                (column) => {
+                  result[column.label] =
+                      row[column.key];
+                }
+            );
+
+            return result;
+          });
+
+      const worksheet =
+          XLSX.utils.json_to_sheet(
+              exportRows
+          );
+
+      const workbook =
+          XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+          workbook,
+          worksheet,
+          "Результат запроса"
+      );
+
+      XLSX.writeFile(
+          workbook,
+          `${
+              isClientEditMode
+                  ? "clients-edit-view"
+                  : activeReport.id
+          }.xlsx`
+      );
+    } catch (e) {
+      console.error(e);
+
+      setError(
+          "Не удалось экспортировать результат запроса в Excel."
+      );
+    } finally {
+      setExportLoading(false);
+    }
   }
 
   /*
@@ -2142,7 +2535,8 @@ export default function ReportsPage() {
             <h1>Отчёты</h1>
 
             <p className="page-description">
-              {activeReport.paginated
+              {isClientEditMode ||
+              activeReport.paginated
                   ? `Всего записей: ${totalElements.toLocaleString(
                       "ru-RU"
                   )}`
@@ -2156,10 +2550,14 @@ export default function ReportsPage() {
                 exportToExcel
               }
               disabled={
-                  rows.length === 0
+                  rows.length === 0 ||
+                  loading ||
+                  exportLoading
               }
           >
-            Экспорт в Excel
+            {exportLoading
+                ? "Подготовка Excel..."
+                : "Экспорт в Excel"}
           </button>
         </div>
 
@@ -2195,39 +2593,56 @@ export default function ReportsPage() {
           >
             Запросы с параметрами
           </button>
+
+          <button
+              className={
+                isClientEditMode
+                    ? "dictionary-tab dictionary-tab-active"
+                    : "dictionary-tab"
+              }
+              onClick={() =>
+                  setMode(
+                      "clientEditView"
+                  )
+              }
+          >
+            Редактирование клиентов
+          </button>
         </div>
 
-        <div className="dictionary-tabs">
-          {(mode === "overview"
-                  ? OVERVIEW_REPORTS
-                  : PARAM_REPORTS
-          ).map((report) => (
-              <button
-                  key={report.id}
-                  className={
-                    report.id ===
-                    activeReport.id
-                        ? "dictionary-tab dictionary-tab-active"
-                        : "dictionary-tab"
-                  }
-                  onClick={() => {
-                    if (
-                        mode === "overview"
-                    ) {
-                      setActiveOverviewId(
-                          report.id
-                      );
-                    } else {
-                      setActiveParamId(
-                          report.id
-                      );
-                    }
-                  }}
-              >
-                {report.label}
-              </button>
-          ))}
-        </div>
+        {!isClientEditMode && (
+            <div className="dictionary-tabs">
+              {(mode === "overview"
+                      ? OVERVIEW_REPORTS
+                      : PARAM_REPORTS
+              ).map((report) => (
+                  <button
+                      key={report.id}
+                      className={
+                        report.id ===
+                        activeReport.id
+                            ? "dictionary-tab dictionary-tab-active"
+                            : "dictionary-tab"
+                      }
+                      onClick={() => {
+                        if (
+                            mode === "overview"
+                        ) {
+                          setActiveOverviewId(
+                              report.id
+                          );
+                        } else {
+                          setActiveParamId(
+                              report.id
+                          );
+                        }
+                      }}
+                  >
+                    {report.label}
+                  </button>
+              ))}
+            </div>
+        )}
 
         {mode === "params" && (
             <form
@@ -2318,7 +2733,8 @@ export default function ReportsPage() {
             </form>
         )}
 
-        {activeReport.chart &&
+        {!isClientEditMode &&
+            activeReport.chart &&
             rows.length > 0 &&
             (() => {
               const chart =
@@ -2464,119 +2880,327 @@ export default function ReportsPage() {
               );
             })()}
 
-        <div
-            className="table-card"
-            style={{
-              marginTop:
-                  mode === "params"
-                      ? 20
-                      : activeReport.chart
-                          ? 0
-                          : 20,
-            }}
-        >
-          {loading ? (
-              <p className="table-message">
-                Выполнение запроса...
-              </p>
-          ) : mode === "params" &&
-          !hasRun ? (
-              <p className="table-message">
-                Заполните параметры и
-                нажмите
-                {" "}
-                «Выполнить запрос».
-              </p>
-          ) : (
-              <>
-                <div
-                    style={{
-                      overflowX:
-                          "auto",
-                      maxWidth:
-                          "100%",
-                    }}
-                >
-                  <table
-                      className="data-table"
-                      style={{
-                        minWidth:
-                            "900px",
-                      }}
-                  >
-                    <thead>
-                    <tr>
-                      {activeReport.columns.map(
-                          (column) => (
-                              <th
+        {isClientEditMode ? (
+            <div
+                className="table-card"
+                style={{
+                  marginTop: 20,
+                }}
+            >
+              {loading ? (
+                  <p className="table-message">
+                    Загрузка списка клиентов...
+                  </p>
+              ) : (
+                  <>
+                    <div
+                        style={{
+                          overflowX:
+                              "auto",
+                          maxWidth:
+                              "100%",
+                        }}
+                    >
+                      <table
+                          className="data-table"
+                          style={{
+                            minWidth:
+                                "960px",
+                          }}
+                      >
+                        <thead>
+                        <tr>
+                          {CLIENT_EDIT_COLUMNS.map(
+                              (column) => (
+                                  <th
+                                      key={
+                                        column.key
+                                      }
+                                  >
+                                    {
+                                      column.label
+                                    }
+                                  </th>
+                              )
+                          )}
+                          <th>
+                            Действия
+                          </th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        {(
+                            rows as ClientEditRow[]
+                        ).map((row) => {
+                          const isEditing =
+                              editingClientId ===
+                              row.clientId;
+
+                          const isSaving =
+                              savingClientId ===
+                              row.clientId;
+
+                          return (
+                              <tr
                                   key={
-                                    column.key
+                                    row.clientId
                                   }
                               >
-                                {
-                                  column.label
-                                }
-                              </th>
-                          )
-                      )}
-                    </tr>
-                    </thead>
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.lastName ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "lastName",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "lastName",
+                                          row.lastName
+                                      )
+                                  )}
+                                </td>
 
-                    <tbody>
-                    {rows.map(
-                        (
-                            row,
-                            index
-                        ) => (
-                            <tr
-                                key={
-                                    row.id ??
-                                    row.loanId ??
-                                    row.clientId ??
-                                    row.pawnshopId ??
-                                    index
-                                }
-                            >
-                              {activeReport.columns.map(
-                                  (
-                                      column
-                                  ) => (
-                                      <td
-                                          key={
-                                            column.key
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.firstName ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "firstName",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "firstName",
+                                          row.firstName
+                                      )
+                                  )}
+                                </td>
+
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.middleName ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "middleName",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "middleName",
+                                          row.middleName
+                                      )
+                                  )}
+                                </td>
+
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          type="date"
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.birthDate ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "birthDate",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "birthDate",
+                                          row.birthDate
+                                      )
+                                  )}
+                                </td>
+
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.address ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "address",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "address",
+                                          row.address
+                                      )
+                                  )}
+                                </td>
+
+                                <td>
+                                  {isEditing ? (
+                                      <input
+                                          style={
+                                            selectStyle
+                                          }
+                                          value={
+                                              editDraft.phone ??
+                                              ""
+                                          }
+                                          onChange={(
+                                              e
+                                          ) =>
+                                              updateEditDraft(
+                                                  "phone",
+                                                  e
+                                                      .target
+                                                      .value
+                                              )
+                                          }
+                                      />
+                                  ) : (
+                                      formatValue(
+                                          "phone",
+                                          row.phone
+                                      )
+                                  )}
+                                </td>
+
+                                <td>
+                                  {isEditing ? (
+                                      <div
+                                          style={{
+                                            display:
+                                                "flex",
+                                            gap: 8,
+                                          }}
+                                      >
+                                        <button
+                                            type="button"
+                                            className="button button-primary"
+                                            disabled={
+                                              isSaving
+                                            }
+                                            onClick={() =>
+                                                void saveClientEdit(
+                                                    row
+                                                )
+                                            }
+                                        >
+                                          {isSaving
+                                              ? "Сохранение..."
+                                              : "Сохранить"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="button button-secondary"
+                                            disabled={
+                                              isSaving
+                                            }
+                                            onClick={
+                                              cancelClientEdit
+                                            }
+                                        >
+                                          Отмена
+                                        </button>
+                                      </div>
+                                  ) : (
+                                      <button
+                                          type="button"
+                                          className="button button-secondary"
+                                          disabled={
+                                              editingClientId !==
+                                              null
+                                          }
+                                          onClick={() =>
+                                              startClientEdit(
+                                                  row
+                                              )
                                           }
                                       >
-                                        {renderCell(
-                                            column,
-                                            row
-                                        )}
-                                      </td>
-                                  )
-                              )}
+                                        Изменить
+                                      </button>
+                                  )}
+                                </td>
+                              </tr>
+                          );
+                        })}
+
+                        {!rows.length && (
+                            <tr>
+                              <td
+                                  colSpan={
+                                      CLIENT_EDIT_COLUMNS.length +
+                                      1
+                                  }
+                                  className="table-message"
+                              >
+                                Нет данных
+                              </td>
                             </tr>
-                        )
-                    )}
+                        )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                    {!rows.length && (
-                        <tr>
-                          <td
-                              colSpan={
-                                activeReport
-                                    .columns
-                                    .length
-                              }
-                              className="table-message"
-                          >
-                            Нет данных
-                          </td>
-                        </tr>
-                    )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {activeReport.paginated &&
-                    totalPages > 1 && (
+                    {totalPages > 1 && (
                         <div className="pagination">
                           <button
                               className="button button-secondary"
@@ -2657,9 +3281,207 @@ export default function ReportsPage() {
                           </button>
                         </div>
                     )}
-              </>
-          )}
-        </div>
+                  </>
+              )}
+            </div>
+        ) : (
+            <div
+                className="table-card"
+                style={{
+                  marginTop:
+                      mode === "params"
+                          ? 20
+                          : activeReport.chart
+                              ? 0
+                              : 20,
+                }}
+            >
+              {loading ? (
+                  <p className="table-message">
+                    Выполнение запроса...
+                  </p>
+              ) : mode === "params" &&
+              !hasRun ? (
+                  <p className="table-message">
+                    Заполните параметры и
+                    нажмите
+                    {" "}
+                    «Выполнить запрос».
+                  </p>
+              ) : (
+                  <>
+                    <div
+                        style={{
+                          overflowX:
+                              "auto",
+                          maxWidth:
+                              "100%",
+                        }}
+                    >
+                      <table
+                          className="data-table"
+                          style={{
+                            minWidth:
+                                "900px",
+                          }}
+                      >
+                        <thead>
+                        <tr>
+                          {activeReport.columns.map(
+                              (column) => (
+                                  <th
+                                      key={
+                                        column.key
+                                      }
+                                  >
+                                    {
+                                      column.label
+                                    }
+                                  </th>
+                              )
+                          )}
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        {rows.map(
+                            (
+                                row,
+                                index
+                            ) => (
+                                <tr
+                                    key={
+                                        row.id ??
+                                        row.loanId ??
+                                        row.clientId ??
+                                        row.pawnshopId ??
+                                        index
+                                    }
+                                >
+                                  {activeReport.columns.map(
+                                      (
+                                          column
+                                      ) => (
+                                          <td
+                                              key={
+                                                column.key
+                                              }
+                                          >
+                                            {renderCell(
+                                                column,
+                                                row
+                                            )}
+                                          </td>
+                                      )
+                                  )}
+                                </tr>
+                            )
+                        )}
+
+                        {!rows.length && (
+                            <tr>
+                              <td
+                                  colSpan={
+                                    activeReport
+                                        .columns
+                                        .length
+                                  }
+                                  className="table-message"
+                              >
+                                Нет данных
+                              </td>
+                            </tr>
+                        )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {activeReport.paginated &&
+                        totalPages > 1 && (
+                            <div className="pagination">
+                              <button
+                                  className="button button-secondary"
+                                  onClick={
+                                    previousPage
+                                  }
+                                  disabled={
+                                      page === 0 ||
+                                      loading
+                                  }
+                                  aria-label="Предыдущая страница"
+                              >
+                                ‹
+                              </button>
+
+                              {getPageNumbers().map(
+                                  (
+                                      pageNumber,
+                                      index
+                                  ) => {
+                                    if (
+                                        pageNumber ===
+                                        "ellipsis"
+                                    ) {
+                                      return (
+                                          <span
+                                              key={`ellipsis-${index}`}
+                                              className="pagination-ellipsis"
+                                          >
+                            …
+                          </span>
+                                      );
+                                    }
+
+                                    return (
+                                        <button
+                                            key={
+                                              pageNumber
+                                            }
+                                            className={
+                                              pageNumber ===
+                                              page
+                                                  ? "button button-primary pagination-page active"
+                                                  : "button button-secondary pagination-page"
+                                            }
+                                            onClick={() =>
+                                                goToPage(
+                                                    pageNumber
+                                                )
+                                            }
+                                            disabled={
+                                                pageNumber ===
+                                                page ||
+                                                loading
+                                            }
+                                        >
+                                          {pageNumber +
+                                              1}
+                                        </button>
+                                    );
+                                  }
+                              )}
+
+                              <button
+                                  className="button button-secondary"
+                                  onClick={
+                                    nextPage
+                                  }
+                                  disabled={
+                                      page >=
+                                      totalPages -
+                                      1 ||
+                                      loading
+                                  }
+                                  aria-label="Следующая страница"
+                              >
+                                ›
+                              </button>
+                            </div>
+                        )}
+                  </>
+              )}
+            </div>
+        )}
       </section>
   );
 }

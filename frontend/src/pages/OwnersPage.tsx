@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { ownerApi } from "@/api/owner";
 import { ownerTypeApi } from "@/api/dictionary";
 
+import { useAuth } from "@/context/AuthContext";
+
 import type {
     Owner,
     OwnerRequest,
@@ -13,6 +15,15 @@ import type { Dictionary } from "@/types/dictionary";
 const PAGE_SIZE = 50;
 
 export default function OwnersPage() {
+    const { can } = useAuth();
+
+    const canCreate = can("owners", "create");
+    const canEdit = can("owners", "edit");
+    const canDelete = can("owners", "delete");
+
+    const hasCrudActions =
+        canEdit || canDelete;
+
     const [items, setItems] =
         useState<Owner[]>([]);
 
@@ -57,7 +68,6 @@ export default function OwnersPage() {
 
     const [phone, setPhone] =
         useState("");
-
 
     /*
      * Загрузка страницы владельцев.
@@ -109,9 +119,11 @@ export default function OwnersPage() {
         }
     }
 
-
     /*
      * Загрузка типов владельцев.
+     *
+     * Нужна для отображения названия
+     * типа владельца.
      */
     async function loadOwnerTypes() {
         try {
@@ -124,7 +136,6 @@ export default function OwnersPage() {
         }
     }
 
-
     /*
      * Первоначальная загрузка.
      */
@@ -133,15 +144,10 @@ export default function OwnersPage() {
         void loadOwnerTypes();
     }, []);
 
-
     /*
      * Поиск по всей базе через backend.
      *
-     * Debounce 400 мс, чтобы не отправлять
-     * запрос на каждое нажатие клавиши.
-     *
-     * Первый рендер пропускаем, потому что
-     * начальную загрузку выполняет эффект выше.
+     * Debounce 400 мс.
      */
     const isFirstRender = useRef(true);
 
@@ -160,9 +166,11 @@ export default function OwnersPage() {
             clearTimeout(timeoutId);
     }, [search]);
 
-
     /*
      * Добавление владельца.
+     *
+     * Функция существует только для ролей,
+     * у которых есть permission create.
      */
     function openCreate() {
         setEditingItem(null);
@@ -176,7 +184,6 @@ export default function OwnersPage() {
         setError("");
         setModalOpen(true);
     }
-
 
     /*
      * Редактирование владельца.
@@ -217,7 +224,6 @@ export default function OwnersPage() {
         setModalOpen(true);
     }
 
-
     /*
      * Закрытие модального окна.
      */
@@ -225,7 +231,6 @@ export default function OwnersPage() {
         setModalOpen(false);
         setEditingItem(null);
     }
-
 
     /*
      * Сохранение владельца.
@@ -259,7 +264,6 @@ export default function OwnersPage() {
             return;
         }
 
-
         const data: OwnerRequest = {
             lastName:
                 lastName.trim(),
@@ -276,7 +280,6 @@ export default function OwnersPage() {
             phone:
                 phone.trim(),
         };
-
 
         try {
             setError("");
@@ -303,7 +306,6 @@ export default function OwnersPage() {
                 page,
                 search
             );
-
         } catch (e) {
             console.error(e);
 
@@ -312,7 +314,6 @@ export default function OwnersPage() {
             );
         }
     }
-
 
     /*
      * Удаление владельца.
@@ -329,12 +330,10 @@ export default function OwnersPage() {
             return;
         }
 
-
         try {
             setError("");
 
             await ownerApi.remove(id);
-
 
             /*
              * Если удалили последний
@@ -347,12 +346,10 @@ export default function OwnersPage() {
                     ? page - 1
                     : page;
 
-
             await loadOwners(
                 targetPage,
                 search
             );
-
         } catch (e) {
             console.error(e);
 
@@ -362,15 +359,8 @@ export default function OwnersPage() {
         }
     }
 
-
     /*
      * Переход на конкретную страницу.
-     *
-     * Backend использует нумерацию:
-     * 0, 1, 2...
-     *
-     * Пользователь видит:
-     * 1, 2, 3...
      */
     function goToPage(
         targetPage: number
@@ -383,19 +373,11 @@ export default function OwnersPage() {
             return;
         }
 
-        /*
-         * Search НЕ сбрасываем.
-         *
-         * Если пользователь ищет "Иванов",
-         * переключение страницы должно продолжать
-         * показывать результаты поиска.
-         */
         void loadOwners(
             targetPage,
             search
         );
     }
-
 
     /*
      * Предыдущая страница.
@@ -406,7 +388,6 @@ export default function OwnersPage() {
         );
     }
 
-
     /*
      * Следующая страница.
      */
@@ -415,7 +396,6 @@ export default function OwnersPage() {
             page + 1
         );
     }
-
 
     /*
      * Формируем номера страниц.
@@ -471,7 +451,6 @@ export default function OwnersPage() {
         return pages;
     }
 
-
     return (
         <section>
 
@@ -490,23 +469,22 @@ export default function OwnersPage() {
 
                 </div>
 
-
-                <button
-                    className="button button-primary"
-                    onClick={openCreate}
-                >
-                    Добавить
-                </button>
+                {canCreate && (
+                    <button
+                        className="button button-primary"
+                        onClick={openCreate}
+                    >
+                        Добавить
+                    </button>
+                )}
 
             </div>
-
 
             {error && (
                 <p className="form-error">
                     {error}
                 </p>
             )}
-
 
             <div className="filter-bar">
 
@@ -521,7 +499,6 @@ export default function OwnersPage() {
                 />
 
             </div>
-
 
             <div className="table-card">
 
@@ -539,113 +516,118 @@ export default function OwnersPage() {
 
                             <thead>
 
-                            <tr>
+                                <tr>
 
-                                <th>
-                                    ФИО
-                                </th>
+                                    <th>
+                                        ФИО
+                                    </th>
 
-                                <th>
-                                    Тип владельца
-                                </th>
+                                    <th>
+                                        Тип владельца
+                                    </th>
 
-                                <th>
-                                    Телефон
-                                </th>
+                                    <th>
+                                        Телефон
+                                    </th>
 
-                                <th>
-                                    Действия
-                                </th>
+                                    {hasCrudActions && (
+                                        <th>
+                                            Действия
+                                        </th>
+                                    )}
 
-                            </tr>
+                                </tr>
 
                             </thead>
 
-
                             <tbody>
 
-                            {items.map(
-                                (item) => (
+                                {items.map(
+                                    (item) => (
 
-                                    <tr
-                                        key={item.id}
-                                    >
+                                        <tr
+                                            key={item.id}
+                                        >
 
-                                        <td>
-                                            {item.lastName}{" "}
-                                            {item.firstName}{" "}
-                                            {item.middleName}
-                                        </td>
+                                            <td>
+                                                {item.lastName}{" "}
+                                                {item.firstName}{" "}
+                                                {item.middleName}
+                                            </td>
 
+                                            <td>
+                                                {item.ownerType ||
+                                                    "—"}
+                                            </td>
 
-                                        <td>
-                                            {item.ownerType ||
-                                                "—"}
-                                        </td>
+                                            <td>
+                                                {item.phone ||
+                                                    "—"}
+                                            </td>
 
+                                            {hasCrudActions && (
+                                                <td>
 
-                                        <td>
-                                            {item.phone ||
-                                                "—"}
-                                        </td>
+                                                    <div className="table-actions">
 
+                                                        {canEdit && (
+                                                            <button
+                                                                className="button button-secondary"
+                                                                onClick={() =>
+                                                                    openEdit(
+                                                                        item
+                                                                    )
+                                                                }
+                                                            >
+                                                                Изменить
+                                                            </button>
+                                                        )}
 
-                                        <td>
+                                                        {canDelete && (
+                                                            <button
+                                                                className="button button-danger"
+                                                                onClick={() =>
+                                                                    deleteOwner(
+                                                                        item.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Удалить
+                                                            </button>
+                                                        )}
 
-                                            <div className="table-actions">
+                                                    </div>
 
-                                                <button
-                                                    className="button button-secondary"
-                                                    onClick={() =>
-                                                        openEdit(
-                                                            item
-                                                        )
-                                                    }
-                                                >
-                                                    Изменить
-                                                </button>
+                                                </td>
+                                            )}
 
+                                        </tr>
 
-                                                <button
-                                                    className="button button-danger"
-                                                    onClick={() =>
-                                                        deleteOwner(
-                                                            item.id
-                                                        )
-                                                    }
-                                                >
-                                                    Удалить
-                                                </button>
+                                    )
+                                )}
 
-                                            </div>
+                                {!items.length && (
 
+                                    <tr>
+
+                                        <td
+                                            colSpan={
+                                                hasCrudActions
+                                                    ? 4
+                                                    : 3
+                                            }
+                                            className="table-message"
+                                        >
+                                            Нет данных
                                         </td>
 
                                     </tr>
 
-                                )
-                            )}
-
-
-                            {!items.length && (
-
-                                <tr>
-
-                                    <td
-                                        colSpan={4}
-                                        className="table-message"
-                                    >
-                                        Нет данных
-                                    </td>
-
-                                </tr>
-
-                            )}
+                                )}
 
                             </tbody>
 
                         </table>
-
 
                         {totalPages > 1 && (
 
@@ -663,7 +645,6 @@ export default function OwnersPage() {
                                 >
                                     ‹
                                 </button>
-
 
                                 {getPageNumbers().map(
                                     (
@@ -684,7 +665,6 @@ export default function OwnersPage() {
                                                 </span>
                                             );
                                         }
-
 
                                         return (
                                             <button
@@ -713,7 +693,6 @@ export default function OwnersPage() {
                                     }
                                 )}
 
-
                                 <button
                                     className="button button-secondary"
                                     onClick={
@@ -738,7 +717,6 @@ export default function OwnersPage() {
 
             </div>
 
-
             {modalOpen && (
 
                 <div className="modal-backdrop">
@@ -753,7 +731,6 @@ export default function OwnersPage() {
                                     : "Добавление владельца"}
                             </h2>
 
-
                             <button
                                 className="close-button"
                                 onClick={
@@ -764,7 +741,6 @@ export default function OwnersPage() {
                             </button>
 
                         </div>
-
 
                         <div className="form-grid">
 
@@ -783,7 +759,6 @@ export default function OwnersPage() {
 
                             </label>
 
-
                             <label>
 
                                 Имя
@@ -799,7 +774,6 @@ export default function OwnersPage() {
 
                             </label>
 
-
                             <label>
 
                                 Отчество
@@ -814,7 +788,6 @@ export default function OwnersPage() {
                                 />
 
                             </label>
-
 
                             <label>
 
@@ -837,7 +810,6 @@ export default function OwnersPage() {
                                         Выберите тип
                                     </option>
 
-
                                     {ownerTypes.map(
                                         (type) => (
 
@@ -859,7 +831,6 @@ export default function OwnersPage() {
 
                             </label>
 
-
                             <label>
 
                                 Телефон
@@ -878,7 +849,6 @@ export default function OwnersPage() {
 
                         </div>
 
-
                         <div className="modal-footer">
 
                             <button
@@ -889,7 +859,6 @@ export default function OwnersPage() {
                             >
                                 Отмена
                             </button>
-
 
                             <button
                                 className="button button-primary"

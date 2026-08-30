@@ -7,6 +7,8 @@ import {
   loanItemApi,
 } from "@/api/loans";
 
+import { useAuth } from "@/context/AuthContext";
+
 import type {
   ClientOption,
   Loan,
@@ -26,6 +28,17 @@ interface ClientPage {
   totalPages: number;
   number: number;
   size: number;
+}
+
+interface PartitionStat {
+  partition: string;
+  rows: number;
+}
+
+interface PartitionOverview {
+  table: string;
+  partitioningType: string;
+  partitions: PartitionStat[];
 }
 
 function money(value: number) {
@@ -83,6 +96,19 @@ function clientFullName(client: ClientOption) {
 }
 
 export default function LoansPage() {
+  const { can } = useAuth();
+
+  /*
+   * Права текущего пользователя.
+   *
+   * ADMIN / OPERATOR -> полный CRUD по ссудам и залогам.
+   * ANALYST           -> только просмотр.
+   */
+  const canCreate = can("loans", "create");
+  const canEdit = can("loans", "edit");
+  const canDelete = can("loans", "delete");
+  const hasActions = canEdit || canDelete;
+
   /*
    * ---------------------------------------------------------
    * ССУДЫ
@@ -112,6 +138,24 @@ export default function LoansPage() {
       useState(true);
 
   const [error, setError] =
+      useState("");
+
+  /*
+   * ---------------------------------------------------------
+   * ПАРТИЦИОНИРОВАНИЕ
+   * ---------------------------------------------------------
+   */
+
+  const [rangeStats, setRangeStats] =
+      useState<PartitionOverview | null>(null);
+
+  const [listStats, setListStats] =
+      useState<PartitionOverview | null>(null);
+
+  const [partitionLoading, setPartitionLoading] =
+      useState(true);
+
+  const [partitionError, setPartitionError] =
       useState("");
 
   /*
@@ -370,6 +414,41 @@ export default function LoansPage() {
 
   /*
    * ---------------------------------------------------------
+   * ЗАГРУЗКА СТАТИСТИКИ ПАРТИЦИЙ
+   * ---------------------------------------------------------
+   */
+
+  async function loadPartitionStats() {
+    setPartitionLoading(true);
+    setPartitionError("");
+
+    try {
+      const [rangeResponse, listResponse] =
+          await Promise.all([
+            api.get<PartitionOverview>(
+                "/partitions/range/stats"
+            ),
+            api.get<PartitionOverview>(
+                "/partitions/list/stats"
+            ),
+          ]);
+
+      setRangeStats(rangeResponse.data);
+      setListStats(listResponse.data);
+    } catch (e) {
+      console.error(e);
+      setRangeStats(null);
+      setListStats(null);
+      setPartitionError(
+          "Не удалось загрузить статистику партиций. Проверьте наличие таблиц loan_range и loan_list в PostgreSQL."
+      );
+    } finally {
+      setPartitionLoading(false);
+    }
+  }
+
+  /*
+   * ---------------------------------------------------------
    * НАЧАЛЬНАЯ ЗАГРУЗКА
    * ---------------------------------------------------------
    */
@@ -377,6 +456,7 @@ export default function LoansPage() {
   useEffect(() => {
     void loadLoans(0);
     void loadDictionaries();
+    void loadPartitionStats();
   }, []);
 
   /*
@@ -478,6 +558,10 @@ export default function LoansPage() {
    */
 
   function openCreate() {
+    if (!canCreate) {
+      return;
+    }
+
     setEditingItem(null);
 
     setPawnshopId(0);
@@ -514,6 +598,10 @@ export default function LoansPage() {
   function openEdit(
       loan: Loan
   ) {
+    if (!canEdit) {
+      return;
+    }
+
     setEditingItem(loan);
 
     const pawnshop =
@@ -621,6 +709,10 @@ export default function LoansPage() {
    */
 
   async function saveLoan() {
+    if (editingItem ? !canEdit : !canCreate) {
+      return;
+    }
+
     if (!pawnshopId) {
       setError(
           "Выберите ломбард."
@@ -762,6 +854,10 @@ export default function LoansPage() {
   async function deleteLoan(
       loan: Loan
   ) {
+    if (!canDelete) {
+      return;
+    }
+
     const confirmed =
         window.confirm(
             "Удалить выбранную ссуду?"
@@ -813,6 +909,10 @@ export default function LoansPage() {
    */
 
   function openCreateItem() {
+    if (!canCreate) {
+      return;
+    }
+
     if (!selectedLoan) {
       setError(
           "Сначала выберите ссуду."
@@ -843,6 +943,10 @@ export default function LoansPage() {
   function openEditItem(
       item: LoanItem
   ) {
+    if (!canEdit) {
+      return;
+    }
+
     setEditingLoanItem(item);
 
     setItemTypeId(
@@ -883,6 +987,10 @@ export default function LoansPage() {
    */
 
   async function saveLoanItem() {
+    if (editingLoanItem ? !canEdit : !canCreate) {
+      return;
+    }
+
     if (!selectedLoan) {
       setError(
           "Не удалось определить номер ссуды."
@@ -982,6 +1090,10 @@ export default function LoansPage() {
   async function deleteLoanItem(
       item: LoanItem
   ) {
+    if (!canDelete) {
+      return;
+    }
+
     if (!selectedLoan) {
       setError(
           "Не удалось определить номер ссуды."
@@ -1136,14 +1248,16 @@ export default function LoansPage() {
             </p>
           </div>
 
-          <button
-              className="button button-primary"
-              onClick={
-                openCreate
-              }
-          >
-            Добавить
-          </button>
+          {canCreate && (
+              <button
+                  className="button button-primary"
+                  onClick={
+                    openCreate
+                  }
+              >
+                Добавить
+              </button>
+          )}
         </div>
 
         {error && (
@@ -1256,15 +1370,17 @@ export default function LoansPage() {
                           Статус
                         </th>
 
-                        <th
-                            style={{
-                              minWidth: "200px",
-                              textAlign:
-                                  "center",
-                            }}
-                        >
-                          Действия
-                        </th>
+                        {hasActions && (
+                            <th
+                                style={{
+                                  minWidth: "200px",
+                                  textAlign:
+                                      "center",
+                                }}
+                            >
+                              Действия
+                            </th>
+                        )}
                       </tr>
                       </thead>
 
@@ -1335,51 +1451,57 @@ export default function LoansPage() {
                                   )}
                                 </td>
 
-                                <td
-                                    style={{
-                                      textAlign:
-                                          "center",
-                                    }}
-                                >
-                                  <div
-                                      style={{
-                                        display:
-                                            "inline-flex",
-                                        gap: "8px",
-                                        justifyContent:
-                                            "center",
-                                        alignItems:
-                                            "center",
-                                      }}
-                                      onClick={(
-                                          e
-                                      ) =>
-                                          e.stopPropagation()
-                                      }
-                                  >
-                                    <button
-                                        className="button button-secondary"
-                                        onClick={() =>
-                                            openEdit(
-                                                loan
-                                            )
-                                        }
+                                {hasActions && (
+                                    <td
+                                        style={{
+                                          textAlign:
+                                              "center",
+                                        }}
                                     >
-                                      Изменить
-                                    </button>
+                                      <div
+                                          style={{
+                                            display:
+                                                "inline-flex",
+                                            gap: "8px",
+                                            justifyContent:
+                                                "center",
+                                            alignItems:
+                                                "center",
+                                          }}
+                                          onClick={(
+                                              e
+                                          ) =>
+                                              e.stopPropagation()
+                                          }
+                                      >
+                                        {canEdit && (
+                                            <button
+                                                className="button button-secondary"
+                                                onClick={() =>
+                                                    openEdit(
+                                                        loan
+                                                    )
+                                                }
+                                            >
+                                              Изменить
+                                            </button>
+                                        )}
 
-                                    <button
-                                        className="button button-danger"
-                                        onClick={() =>
-                                            void deleteLoan(
-                                                loan
-                                            )
-                                        }
-                                    >
-                                      Удалить
-                                    </button>
-                                  </div>
-                                </td>
+                                        {canDelete && (
+                                            <button
+                                                className="button button-danger"
+                                                onClick={() =>
+                                                    void deleteLoan(
+                                                        loan
+                                                    )
+                                                }
+                                            >
+                                              Удалить
+                                            </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                )}
                               </tr>
                           )
                       )}
@@ -1387,7 +1509,11 @@ export default function LoansPage() {
                       {!items.length && (
                           <tr>
                             <td
-                                colSpan={9}
+                                colSpan={
+                                  hasActions
+                                      ? 9
+                                      : 8
+                                }
                                 className="table-message"
                             >
                               Нет данных
@@ -1513,14 +1639,16 @@ export default function LoansPage() {
                       </p>
                     </div>
 
-                    <button
-                        className="button button-primary"
-                        onClick={
-                          openCreateItem
-                        }
-                    >
-                      Добавить
-                    </button>
+                    {canCreate && (
+                        <button
+                            className="button button-primary"
+                            onClick={
+                              openCreateItem
+                            }
+                        >
+                          Добавить
+                        </button>
+                    )}
                   </div>
 
                   {itemsLoading ? (
@@ -1558,29 +1686,35 @@ export default function LoansPage() {
                           </span>
                                   </div>
 
-                                  <div className="table-actions">
-                                    <button
-                                        className="button button-secondary"
-                                        onClick={() =>
-                                            openEditItem(
-                                                item
-                                            )
-                                        }
-                                    >
-                                      Изменить
-                                    </button>
+                                  {hasActions && (
+                                      <div className="table-actions">
+                                        {canEdit && (
+                                            <button
+                                                className="button button-secondary"
+                                                onClick={() =>
+                                                    openEditItem(
+                                                        item
+                                                    )
+                                                }
+                                            >
+                                              Изменить
+                                            </button>
+                                        )}
 
-                                    <button
-                                        className="button button-danger"
-                                        onClick={() =>
-                                            void deleteLoanItem(
-                                                item
-                                            )
-                                        }
-                                    >
-                                      Удалить
-                                    </button>
-                                  </div>
+                                        {canDelete && (
+                                            <button
+                                                className="button button-danger"
+                                                onClick={() =>
+                                                    void deleteLoanItem(
+                                                        item
+                                                    )
+                                                }
+                                            >
+                                              Удалить
+                                            </button>
+                                        )}
+                                      </div>
+                                  )}
                                 </article>
                             )
                         )}
@@ -1598,6 +1732,94 @@ export default function LoansPage() {
             )}
           </aside>
         </div>
+
+        <div style={{ marginTop: "24px" }}>
+          <h2>Партиционирование</h2>
+
+          <p className="page-description">
+            Статистика распределения записей по физическим секциям PostgreSQL.
+            Основная таблица ссуд при этом продолжает использовать обычную
+            постраничную загрузку по 50 записей.
+          </p>
+        </div>
+
+        {partitionError && (
+            <p className="form-error">
+              {partitionError}
+            </p>
+        )}
+
+        {partitionLoading ? (
+            <div className="info-card" style={{ marginTop: "16px" }}>
+              <p className="table-message">
+                Загрузка статистики партиций...
+              </p>
+            </div>
+        ) : (
+            <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                  gap: "16px",
+                  marginTop: "16px",
+                }}
+            >
+              {[
+                {
+                  title: "RANGE — loan_range",
+                  overview: rangeStats,
+                  description: "Разбиение по дате выдачи с вложенным разбиением 2023 года по кварталам.",
+                },
+                {
+                  title: "LIST — loan_list",
+                  overview: listStats,
+                  description: "Разбиение по группам ломбардов.",
+                },
+              ].map((block) => (
+                  <div className="info-card" key={block.title}>
+                    <h2>{block.title}</h2>
+
+                    <p>{block.description}</p>
+
+                    {!block.overview ? (
+                        <p className="table-message">
+                          Данные о партициях недоступны.
+                        </p>
+                    ) : (
+                        <div style={{ overflowX: "auto" }}>
+                          <table className="data-table">
+                            <thead>
+                            <tr>
+                              <th>Секция</th>
+                              <th>Записей</th>
+                            </tr>
+                            </thead>
+
+                            <tbody>
+                            {block.overview.partitions.map((stat) => (
+                                <tr key={stat.partition}>
+                                  <td>{stat.partition}</td>
+                                  <td>
+                                    {stat.rows.toLocaleString("ru-RU")}
+                                  </td>
+                                </tr>
+                            ))}
+
+                            {!block.overview.partitions.length && (
+                                <tr>
+                                  <td colSpan={2} className="table-message">
+                                    Секции не содержат записей.
+                                  </td>
+                                </tr>
+                            )}
+                            </tbody>
+                          </table>
+                        </div>
+                    )}
+                  </div>
+              ))}
+            </div>
+        )}
 
         {modalOpen && (
             <div className="modal-backdrop">

@@ -1,6 +1,7 @@
 package com.pawnhop.backend.report.controller;
 
 import com.pawnhop.backend.report.dto.*;
+import com.pawnhop.backend.report.service.ClientEditViewService;
 import com.pawnhop.backend.report.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ClientEditViewService clientEditViewService;
 
     @GetMapping("/loans-by-pawnshop/{pawnshopId}")
     public Page<LoansByPawnshopReportDto> findLoansByPawnshop(
@@ -193,5 +195,20 @@ public class ReportController {
             @PageableDefault(size = 50) Pageable pageable
     ){
         return reportService.getFindProblematicLoans(largeAmountThreshold, pageable);
+    }
+
+
+    @GetMapping("/clients/edit-view")
+    public Page<ClientEditViewDto> getClientsFromEditView(
+            @PageableDefault(size =  50) Pageable pageable
+    ){
+        return clientEditViewService.getClientsFromEditView(pageable);
+    }
+
+    @PutMapping("/clients/edit-view")
+    public void updateClientThroughEditView(
+            @RequestBody ClientEditViewDto dto
+    ) throws IllegalAccessException {
+        clientEditViewService.updateClientThroughEditView(dto);
     }
 }
